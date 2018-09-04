@@ -5,6 +5,9 @@ import random
 import json
 import sys
 import os
+import subprocess
+
+import graph_tool
 
 import networkx as nx
 from networkx.readwrite import json_graph
@@ -13,8 +16,9 @@ major = version_info[0]
 minor = version_info[1]
 assert (major <= 1) and (minor <= 11), "networkx major version > 1.11"
 
-WALK_LEN=5
-N_WALKS=50
+WALK_LEN = 5
+N_WALKS = 20
+
 
 def load_data(prefix, normalize=True, load_walks=False):
     G_data = json.load(open(prefix + "-G.json"))
@@ -74,31 +78,79 @@ def load_data(prefix, normalize=True, load_walks=False):
 
     return G, feats, id_map, walks, class_map
 
-def run_random_walks(G, nodes, num_walks=N_WALKS):
-    pairs = []
-    for count, node in enumerate(nodes):
-        if G.degree(node) == 0:
+
+def load_data_from_graph(graph_file, walks_file):
+    g = graph_tool.load_graph(graph_file)
+
+    class id_map(object):
+        def __getitem__(self, item):
+            return int(item)
+
+        def __len__(self):
+            return g.num_vertices()
+
+    class random_walks(object):
+        def __init__(self, filename):
+            self.filename = filename
+            self._len = None
+
+            self._open()
+
+        def _open(self):
+            print("Shuffling...")
+            p = subprocess.Popen(['gshuf', '-o', self.filename + '.shuffle', self.filename])
+            p.wait()
+            self.f = open(self.filename + '.shuffle', 'r')
+
+        def __len__(self):
+            if self._len is not None:
+                return self._len
+
+            p = subprocess.Popen(['wc', '-l', self.filename],
+                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            result, err = p.communicate()
+            if p.returncode != 0:
+                raise IOError(err)
+
+            self._len = int(result.strip().split()[0])
+            return self._len
+
+        def __iter__(self):
+            return self
+
+        def next(self):
+            return next(self.f)
+
+    return g, None, id_map(), random_walks(walks_file), None
+
+
+def run_random_walks(G, num_walks=N_WALKS, walk_len=WALK_LEN):
+    for count, node in enumerate(G.vertices()):
+        if not node.in_degree() and not node.out_degree():
             continue
+
         for i in range(num_walks):
             curr_node = node
-            for j in range(WALK_LEN):
-                next_node = random.choice(G.neighbors(curr_node))
+            for j in range(walk_len):
+                next_node = random.choice(list(curr_node.all_neighbors()))
                 # self co-occurrences are useless
                 if curr_node != node:
-                    pairs.append((node,curr_node))
+                    yield (node, curr_node)
+
                 curr_node = next_node
+
         if count % 1000 == 0:
             print("Done walks for", count, "nodes")
-    return pairs
+
 
 if __name__ == "__main__":
     """ Run random walks """
     graph_file = sys.argv[1]
     out_file = sys.argv[2]
-    G_data = json.load(open(graph_file))
-    G = json_graph.node_link_graph(G_data)
-    nodes = [n for n in G.nodes() if not G.node[n]["val"] and not G.node[n]["test"]]
-    G = G.subgraph(nodes)
-    pairs = run_random_walks(G, nodes)
+    G = graph_tool.load_graph(graph_file)
+    G.set_vertex_filter(G.vertex_properties.test, inverted=True)
+
     with open(out_file, "w") as fp:
-        fp.write("\n".join([str(p[0]) + "\t" + str(p[1]) for p in pairs]))
+        for node1, node2 in run_random_walks(G):
+            fp.write(str(node1) + "\t" + str(node2) + '\n')
+

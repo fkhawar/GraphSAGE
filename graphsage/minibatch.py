@@ -1,7 +1,10 @@
 from __future__ import division
 from __future__ import print_function
 
+import os
+
 import numpy as np
+import itertools
 
 np.random.seed(123)
 
@@ -118,7 +121,7 @@ class EdgeMinibatchIterator(object):
             batch2.append(self.id2idx[node2])
 
         feed_dict = dict()
-        feed_dict.update({self.placeholders['batch_size'] : len(batch_edges)})
+        feed_dict.update({self.placeholders['batch_size']: len(batch_edges)})
         feed_dict.update({self.placeholders['batch1']: batch1})
         feed_dict.update({self.placeholders['batch2']: batch2})
 
@@ -174,6 +177,85 @@ class EdgeMinibatchIterator(object):
         self.train_edges = np.random.permutation(self.train_edges)
         self.nodes = np.random.permutation(self.nodes)
         self.batch_num = 0
+
+
+class LazyMinibatchIterator(EdgeMinibatchIterator):
+    def __init__(self, G, id2idx,
+            placeholders, context_pairs=None, batch_size=100, max_degree=25,
+            name='ruwiki', **kwargs):
+
+        self.G = G
+        self.id2idx = id2idx
+        self.placeholders = placeholders
+        self.batch_size = batch_size
+        self.max_degree = max_degree
+        self.batch_num = 0
+        self.name = '%s_%d' % (name, self.max_degree)
+
+        self.adj, self.deg = self.construct_adj()
+        self.test_adj = self.construct_test_adj()
+
+        self.train_edges = self.edges = context_pairs
+
+        self.G.set_vertex_filter(self.G.vertex_properties.test)
+        self.val_edges = [(e.source(), e.target()) for e in G.edges()]
+        self.G.clear_filters()
+
+        self.nodes = [int(v) for v in G.vertices() if v.in_degree()]
+
+    def construct_adj(self):
+        if os.path.isfile(self.name + '.adj.npy'):
+            adj = np.load(self.name + '.adj.npy')
+            deg = np.load(self.name + '.deg.npy')
+            return adj, deg
+
+        adj = len(self.id2idx) * np.ones((len(self.id2idx) + 1, self.max_degree), dtype=np.int32)
+        deg = np.zeros((len(self.id2idx),), dtype=np.uint8)
+
+        self.G.set_vertex_filter(self.G.vertex_properties.test, inverted=True)
+        for source, edges in itertools.groupby(self.G.edges(), key=lambda x: x.source()):
+            neighbors = [int(e.target()) for e in edges]
+            deg[self.id2idx[source]] = len(neighbors)
+            adj[self.id2idx[source], :] = np.random.choice(neighbors, self.max_degree,
+                                                           replace=len(neighbors) < self.max_degree)
+
+        self.G.clear_filters()
+
+        np.save(self.name + '.adj.npy', adj)
+        np.save(self.name + '.deg.npy', deg)
+
+        return adj, deg
+
+    def construct_test_adj(self):
+        if os.path.isfile(self.name + '.test-adj.npy'):
+            return np.load(self.name + '.test-adj.npy')
+
+        adj = len(self.id2idx) * np.ones((len(self.id2idx) + 1, self.max_degree), dtype=np.int32)
+
+        for source, edges in itertools.groupby(self.G.edges(), key=lambda x: x.source()):
+            neighbors = [int(e.target()) for e in edges]
+            adj[self.id2idx[source], :] = np.random.choice(neighbors, self.max_degree,
+                                                           replace=len(neighbors) < self.max_degree)
+
+        np.save(self.name + '.test-adj.npy', adj)
+        return adj
+
+    def next_minibatch_feed_dict(self):
+        self.batch_num += 1
+        batch_edges = itertools.islice(self.train_edges, 0, self.batch_size)
+        batch_edges = (line.strip() for line in batch_edges)
+        batch_edges = (line.split('\t') for line in batch_edges)
+        batch_edges = [map(int, line) for line in batch_edges]
+        return self.batch_feed_dict(batch_edges)
+
+    def shuffle(self):
+        self.edges._open()
+        self.batch_num = 0
+
+    def label_val(self):
+        raise NotImplemented
+
+
 
 class NodeMinibatchIterator(object):
     
