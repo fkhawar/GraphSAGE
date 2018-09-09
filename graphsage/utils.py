@@ -16,8 +16,6 @@ major = version_info[0]
 minor = version_info[1]
 assert (major <= 1) and (minor <= 11), "networkx major version > 1.11"
 
-WALK_LEN = 5
-N_WALKS = 20
 
 
 def load_data(prefix, normalize=True, load_walks=False):
@@ -124,33 +122,4 @@ def load_data_from_graph(graph_file, walks_file):
     return g, None, id_map(), random_walks(walks_file), None
 
 
-def run_random_walks(G, num_walks=N_WALKS, walk_len=WALK_LEN):
-    for count, node in enumerate(G.vertices()):
-        if not node.in_degree() and not node.out_degree():
-            continue
-
-        for i in range(num_walks):
-            curr_node = node
-            for j in range(walk_len):
-                next_node = random.choice(list(curr_node.all_neighbors()))
-                # self co-occurrences are useless
-                if curr_node != node:
-                    yield (node, curr_node)
-
-                curr_node = next_node
-
-        if count % 1000 == 0:
-            print("Done walks for", count, "nodes")
-
-
-if __name__ == "__main__":
-    """ Run random walks """
-    graph_file = sys.argv[1]
-    out_file = sys.argv[2]
-    G = graph_tool.load_graph(graph_file)
-    G.set_vertex_filter(G.vertex_properties.test, inverted=True)
-
-    with open(out_file, "w") as fp:
-        for node1, node2 in run_random_walks(G):
-            fp.write(str(node1) + "\t" + str(node2) + '\n')
 
