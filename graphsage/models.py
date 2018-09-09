@@ -235,14 +235,8 @@ class SampleAndAggregate(GeneralizedModel):
                 raise Exception("Must have a positive value for identity feature dimension if no input features given.")
             self.features = self.embeds
         else:
-            def init(shape, dtype, partition_info):
-                offset = partition_info.var_offset[0]
-                return features[offset:offset + shape[0], :]
+            self.features = tf.Variable(placeholders['features'], trainable=False)
 
-            self.features = tf.get_variable('node_features', shape=features.shape,
-                                            initializer=init,
-                                            dtype=tf.float32, trainable=False,
-                                            partitioner=lambda **_: [10, 1])
             if not self.embeds is None:
                 self.features = tf.concat([self.embeds, self.features], axis=1)
         self.degrees = degrees

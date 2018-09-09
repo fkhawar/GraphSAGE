@@ -123,16 +123,17 @@ def save_val_embeddings(sess, model, minibatch_iter, size, out_dir, mod="", feed
         fp.write("\n".join(map(str,nodes)))
 
 
-def construct_placeholders():
+def construct_placeholders(emb_dim):
     # Define placeholders
     placeholders = {
-        'batch1' : tf.placeholder(tf.int32, shape=(None), name='batch1'),
-        'batch2' : tf.placeholder(tf.int32, shape=(None), name='batch2'),
+        'batch1': tf.placeholder(tf.int32, shape=(None), name='batch1'),
+        'batch2': tf.placeholder(tf.int32, shape=(None), name='batch2'),
+        'features': tf.placeholder(tf.float32, shape=emb_dim, name='features'),
         # negative samples for all nodes in the batch
         'neg_samples': tf.placeholder(tf.int32, shape=(None,),
             name='neg_sample_size'),
         'dropout': tf.placeholder_with_default(0., shape=(), name='dropout'),
-        'batch_size' : tf.placeholder(tf.int32, name='batch_size'),
+        'batch_size': tf.placeholder(tf.int32, name='batch_size'),
     }
     return placeholders
 
@@ -148,7 +149,7 @@ def train(train_data, test_data=None):
 
     context_pairs = train_data[3] if FLAGS.random_context else None
     len(context_pairs)
-    placeholders = construct_placeholders()
+    placeholders = construct_placeholders(features.shape)
     minibatch = LazyMinibatchIterator(G,
             id_map,
             placeholders, batch_size=FLAGS.batch_size,
@@ -253,7 +254,8 @@ def train(train_data, test_data=None):
     summary_writer = tf.summary.FileWriter(log_dir(), sess.graph)
      
     # Init variables
-    sess.run(tf.global_variables_initializer(), feed_dict={adj_info_ph: minibatch.adj})
+    sess.run(tf.global_variables_initializer(), feed_dict={adj_info_ph: minibatch.adj,
+                                                           placeholders['features']: features})
     
     # Train model
     
@@ -275,8 +277,9 @@ def train(train_data, test_data=None):
         while not minibatch.end():
             # Construct feed dictionary
             feed_dict = minibatch.next_minibatch_feed_dict()
-            feed_dict.update({placeholders['dropout']: FLAGS.dropout})
-            feed_dict.update({adj_info_ph: minibatch.adj})
+            feed_dict.update({placeholders['dropout']: FLAGS.dropout,
+                              # placeholders['features']: features,
+                              adj_info_ph: minibatch.adj})
 
             t = time.time()
             # Training step
@@ -295,7 +298,9 @@ def train(train_data, test_data=None):
                 # Validation
                 val_cost, ranks, val_mrr, duration = evaluate(sess, model, minibatch,
                                                               size=FLAGS.validate_batch_size,
-                                                              feed={adj_info_ph: minibatch.test_adj})
+                                                              feed={adj_info_ph: minibatch.test_adj,
+                                                                    # placeholders['features']: features
+                                                                    })
                 epoch_val_costs[-1] += val_cost
             if shadow_mrr is None:
                 shadow_mrr = val_mrr
@@ -330,7 +335,8 @@ def train(train_data, test_data=None):
     print("Optimization Finished!")
     if FLAGS.save_embeddings:
         save_val_embeddings(sess, model, minibatch, FLAGS.validate_batch_size, log_dir(),
-                            feed={adj_info_ph: minibatch.test_adj})
+                            feed={adj_info_ph: minibatch.test_adj,
+                                  placeholders['features']: features})
 
         # if FLAGS.model == "n2v":
         #     # stopping the gradient for the already trained nodes
