@@ -387,7 +387,7 @@ def train(train_data, test_data=None):
 def main(argv=None):
     print("Loading training data..")
     # train_data = load_data(FLAGS.train_prefix, load_walks=True)
-    train_data = load_data_from_graph(FLAGS.train_prefix, 'random.walk')
+    train_data = load_data_from_graph(FLAGS.train_prefix, 'doc2vec.npy', 'random.walk')
     print("Done loading training data..")
     train(train_data)
 

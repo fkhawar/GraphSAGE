@@ -17,6 +17,9 @@ minor = version_info[1]
 assert (major <= 1) and (minor <= 11), "networkx major version > 1.11"
 
 
+SHUF_UTIL = (sys.platform.startswith('linux') and 'shuf') or \
+            (sys.platform.startswith('darwin') and 'gshuf') or ''
+
 
 def load_data(prefix, normalize=True, load_walks=False):
     G_data = json.load(open(prefix + "-G.json"))
@@ -77,7 +80,7 @@ def load_data(prefix, normalize=True, load_walks=False):
     return G, feats, id_map, walks, class_map
 
 
-def load_data_from_graph(graph_file, walks_file):
+def load_data_from_graph(graph_file, features_file, walks_file):
     g = graph_tool.load_graph(graph_file)
 
     class id_map(object):
@@ -96,7 +99,7 @@ def load_data_from_graph(graph_file, walks_file):
 
         def _open(self):
             print("Shuffling...")
-            p = subprocess.Popen(['gshuf', '-o', self.filename + '.shuffle', self.filename])
+            p = subprocess.Popen([SHUF_UTIL, '-o', self.filename + '.shuffle', self.filename])
             p.wait()
             self.f = open(self.filename + '.shuffle', 'r')
 
@@ -119,7 +122,7 @@ def load_data_from_graph(graph_file, walks_file):
         def next(self):
             return next(self.f)
 
-    return g, None, id_map(), random_walks(walks_file), None
+    return g, np.load(features_file), id_map(), random_walks(walks_file), None
 
 
 
