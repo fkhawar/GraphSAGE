@@ -43,7 +43,7 @@ flags.DEFINE_boolean('random_context', True, 'Whether to use random context or d
 flags.DEFINE_integer('neg_sample_size', 20, 'number of negative samples')
 flags.DEFINE_integer('batch_size', 512, 'minibatch size.')
 flags.DEFINE_integer('n2v_test_epochs', 1, 'Number of new SGD epochs for n2v.')
-flags.DEFINE_integer('identity_dim', 64, 'Set to positive value to use identity embedding features of that dimension. Default 0.')
+flags.DEFINE_integer('identity_dim', 0, 'Set to positive value to use identity embedding features of that dimension. Default 0.')
 
 #logging, saving, validation settings etc.
 flags.DEFINE_boolean('save_embeddings', True, 'whether to save embeddings for all nodes after training')
