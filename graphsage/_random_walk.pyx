@@ -1,5 +1,4 @@
 import random
-from cython.parallel import prange
 
 
 def run_random_walks(G, int num_walks, int walk_len):
@@ -7,7 +6,7 @@ def run_random_walks(G, int num_walks, int walk_len):
         if not node.out_degree():
             continue
 
-        for i in prange(num_walks, nogil=True):
+        for i in range(num_walks):
             curr_node = node
             for j in range(walk_len):
                 neighbors = list(curr_node.out_neighbors())
