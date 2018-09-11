@@ -49,7 +49,7 @@ flags.DEFINE_integer('identity_dim', 0, 'Set to positive value to use identity e
 flags.DEFINE_boolean('save_embeddings', True, 'whether to save embeddings for all nodes after training')
 flags.DEFINE_string('base_log_dir', '.', 'base directory for logging and saving embeddings')
 flags.DEFINE_integer('validate_iter', 5000, "how often to run a validation minibatch.")
-flags.DEFINE_integer('validate_batch_size', 256, "how many nodes per validation sample.")
+flags.DEFINE_integer('validate_batch_size', 2048, "how many nodes per validation sample.")
 flags.DEFINE_integer('gpu', 1, "which gpu to use.")
 flags.DEFINE_integer('print_every', 50, "How often to print training info.")
 flags.DEFINE_integer('max_total_steps', 10**10, "Maximum total number of iterations")
@@ -255,7 +255,8 @@ def train(train_data, test_data=None):
      
     # Init variables
     sess.run(tf.global_variables_initializer(), feed_dict={adj_info_ph: minibatch.adj,
-                                                           placeholders['features']: features})
+                                                           placeholders['features']: features
+                                                           })
     
     # Train model
     
