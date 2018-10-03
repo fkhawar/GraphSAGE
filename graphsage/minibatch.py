@@ -201,7 +201,7 @@ class LazyMinibatchIterator(EdgeMinibatchIterator):
         self.val_edges = [(e.source(), e.target()) for e in G.edges()]
         self.G.clear_filters()
 
-        self.nodes = [int(v) for v in G.vertices() if v.in_degree()]
+        self.nodes = [int(v) for v in G.vertices() if v.out_degree()]
 
     def construct_adj(self):
         if os.path.isfile(self.name + '.adj.npy'):

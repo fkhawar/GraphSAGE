@@ -298,6 +298,8 @@ class SampleAndAggregate(GeneralizedModel):
 
         # length: number of layers + 1
         hidden = [tf.nn.embedding_lookup(input_features, node_samples) for node_samples in samples]
+        # hidden[0] = tf.Print(hidden[0], [hidden[0], samples[0]], message='hidden', summarize=1000)
+
         new_agg = aggregators is None
         if new_agg:
             aggregators = []
@@ -343,7 +345,9 @@ class SampleAndAggregate(GeneralizedModel):
             distortion=0.75,
             unigrams=self.degrees.tolist()))
 
-           
+        # self.inputs1 = tf.Print(self.inputs1, [self.inputs1, self.inputs2], message='inputs:', summarize=1000)
+        # self.neg_samples = tf.Print(self.neg_samples, [self.neg_samples], message='neg_samples', summarize=1000)
+
         # perform "convolution"
         samples1, support_sizes1 = self.sample(self.inputs1, self.layer_infos)
         samples2, support_sizes2 = self.sample(self.inputs2, self.layer_infos)
