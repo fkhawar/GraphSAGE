@@ -194,6 +194,8 @@ class LazyMinibatchIterator(EdgeMinibatchIterator):
         self.batch_num = 0
         self.name = '%s_%d' % (name, self.max_degree)
 
+        self.nodes, self.clusters = clusters
+
         self.adj, self.deg = self.construct_adj()
         self.test_adj = self.construct_test_adj()
 
@@ -202,8 +204,6 @@ class LazyMinibatchIterator(EdgeMinibatchIterator):
         self.G.set_vertex_filter(self.G.vertex_properties.test)
         self.val_edges = [(e.source(), e.target()) for e in G.edges()]
         self.G.clear_filters()
-
-        self.nodes, self.clusters = clusters
 
     def construct_adj(self):
         if os.path.isfile(self.name + '.adj.npy'):
@@ -215,11 +215,16 @@ class LazyMinibatchIterator(EdgeMinibatchIterator):
         deg = np.zeros((len(self.id2idx),), dtype=np.uint8)
 
         self.G.set_vertex_filter(self.G.vertex_properties.test, inverted=True)
-        for source, edges in itertools.groupby(self.G.edges(), key=lambda x: x.source()):
-            neighbors = [int(e.target()) for e in edges]
-            deg[self.id2idx[source]] = len(neighbors)
-            adj[self.id2idx[source], :] = np.random.choice(neighbors, self.max_degree,
-                                                           replace=len(neighbors) < self.max_degree)
+        for v in self.nodes:
+            try:
+                vertex = self.G.vertex(v)
+            except ValueError:
+                continue
+
+            neighbors = [int(e) for e in vertex.all_neighbors()]
+            deg[self.id2idx[v]] = len(neighbors)
+            adj[self.id2idx[v], :] = np.random.choice(neighbors, self.max_degree,
+                                                      replace=len(neighbors) < self.max_degree)
 
         self.G.clear_filters()
 
@@ -234,10 +239,15 @@ class LazyMinibatchIterator(EdgeMinibatchIterator):
 
         adj = len(self.id2idx) * np.ones((len(self.id2idx) + 1, self.max_degree), dtype=np.int32)
 
-        for source, edges in itertools.groupby(self.G.edges(), key=lambda x: x.source()):
-            neighbors = [int(e.target()) for e in edges]
-            adj[self.id2idx[source], :] = np.random.choice(neighbors, self.max_degree,
-                                                           replace=len(neighbors) < self.max_degree)
+        for v in self.nodes:
+            try:
+                vertex = self.G.vertex(v)
+            except ValueError:
+                continue
+
+            neighbors = [int(e) for e in vertex.all_neighbors()]
+            adj[self.id2idx[v], :] = np.random.choice(neighbors, self.max_degree,
+                                                      replace=len(neighbors) < self.max_degree)
 
         np.save(self.name + '.test-adj.npy', adj)
         return adj
