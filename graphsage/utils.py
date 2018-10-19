@@ -135,4 +135,7 @@ def load_data_from_graph(graph_file, features_file, walks_file, clusters):
 
     clusters = (np.array(nodes), np.array(cluster_ids))
 
-    return g, np.load(features_file), id_map(), random_walks(walks_file), clusters, None
+    features = np.load(features_file)
+    features[0, :] = np.zeros(features.shape[1])  # unknown vertex
+
+    return g, features, id_map(), random_walks(walks_file), clusters, None

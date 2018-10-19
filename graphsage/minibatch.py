@@ -211,7 +211,7 @@ class LazyMinibatchIterator(EdgeMinibatchIterator):
             deg = np.load(self.name + '.deg.npy')
             return adj, deg
 
-        adj = len(self.id2idx) * np.ones((len(self.id2idx) + 1, self.max_degree), dtype=np.int32)
+        adj = np.zeros((len(self.id2idx) + 1, self.max_degree), dtype=np.int32)
         deg = np.zeros((len(self.id2idx),), dtype=np.uint8)
 
         self.G.set_vertex_filter(self.G.vertex_properties.test, inverted=True)
@@ -237,7 +237,7 @@ class LazyMinibatchIterator(EdgeMinibatchIterator):
         if os.path.isfile(self.name + '.test-adj.npy'):
             return np.load(self.name + '.test-adj.npy')
 
-        adj = len(self.id2idx) * np.ones((len(self.id2idx) + 1, self.max_degree), dtype=np.int32)
+        adj = np.zeros((len(self.id2idx) + 1, self.max_degree), dtype=np.int32)
 
         for v in self.nodes:
             try:
