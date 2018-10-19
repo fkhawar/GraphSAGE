@@ -180,8 +180,9 @@ class EdgeMinibatchIterator(object):
 
 
 class LazyMinibatchIterator(EdgeMinibatchIterator):
-    def __init__(self, G, id2idx,
-                 placeholders, context_pairs=None, batch_size=100, max_degree=25,
+    def __init__(self, G, id2idx, clusters,
+                 placeholders, context_pairs=None,
+                 batch_size=100, max_degree=25, num_neg_samples=40,
                  name='ruwiki', **kwargs):
 
         self.G = G
@@ -189,6 +190,7 @@ class LazyMinibatchIterator(EdgeMinibatchIterator):
         self.placeholders = placeholders
         self.batch_size = batch_size
         self.max_degree = max_degree
+        self.neg_samples = num_neg_samples
         self.batch_num = 0
         self.name = '%s_%d' % (name, self.max_degree)
 
@@ -201,7 +203,7 @@ class LazyMinibatchIterator(EdgeMinibatchIterator):
         self.val_edges = [(e.source(), e.target()) for e in G.edges()]
         self.G.clear_filters()
 
-        self.nodes = [int(v) for v in G.vertices() if v.out_degree()]
+        self.nodes, self.clusters = clusters
 
     def construct_adj(self):
         if os.path.isfile(self.name + '.adj.npy'):
@@ -240,13 +242,32 @@ class LazyMinibatchIterator(EdgeMinibatchIterator):
         np.save(self.name + '.test-adj.npy', adj)
         return adj
 
+    def batch_feed_dict(self, batch_edges, neg_samples):
+        dct = super(LazyMinibatchIterator, self).batch_feed_dict(batch_edges)
+        dct[self.placeholders['neg_samples']] = neg_samples
+        return dct
+
+    def get_negative_samples(self, batch_edges):
+        node_ids = np.isin(self.nodes, [n for e in batch_edges for n in e])
+        batch_clusters = self.clusters[node_ids]
+        other_clusters = np.isin(self.clusters, batch_clusters, invert=True)
+
+        return np.random.choice(self.nodes[other_clusters], self.neg_samples)
+
     def next_minibatch_feed_dict(self):
         self.batch_num += 1
-        batch_edges = itertools.islice(self.train_edges, 0, self.batch_size)
-        batch_edges = (line.strip() for line in batch_edges)
-        batch_edges = (line.split('\t') for line in batch_edges)
-        batch_edges = [map(int, line) for line in batch_edges]
-        return self.batch_feed_dict(batch_edges)
+        batch_edges = list(itertools.islice(self.train_edges, 0, self.batch_size))
+
+        return self.batch_feed_dict(batch_edges, self.get_negative_samples(batch_edges))
+
+    def val_feed_dict(self, size=None):
+        edge_list = self.val_edges
+
+        ind = np.random.permutation(len(edge_list))
+        val_edges = [edge_list[i] for i in ind[:min(size, len(ind))]]
+        val_edges = [(int(src), int(dst)) for src, dst in val_edges]
+
+        return self.batch_feed_dict(val_edges, self.get_negative_samples(val_edges))
 
     def shuffle(self):
         self.edges._open()

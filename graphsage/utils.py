@@ -80,7 +80,7 @@ def load_data(prefix, normalize=True, load_walks=False):
     return G, feats, id_map, walks, class_map
 
 
-def load_data_from_graph(graph_file, features_file, walks_file):
+def load_data_from_graph(graph_file, features_file, walks_file, clusters):
     g = graph_tool.load_graph(graph_file)
 
     class id_map(object):
@@ -99,8 +99,8 @@ def load_data_from_graph(graph_file, features_file, walks_file):
 
         def _open(self):
             print("Shuffling...")
-            p = subprocess.Popen([SHUF_UTIL, '-o', self.filename + '.shuffle', self.filename])
-            p.wait()
+            # p = subprocess.Popen([SHUF_UTIL, '-o', self.filename + '.shuffle', self.filename])
+            # p.wait()
             self.f = open(self.filename + '.shuffle', 'r')
 
         def __len__(self):
@@ -120,9 +120,19 @@ def load_data_from_graph(graph_file, features_file, walks_file):
             return self
 
         def next(self):
-            return next(self.f)
+            l = next(self.f)
+            src, dst = l.strip().split('\t')
+            return int(src), int(dst)
 
-    return g, np.load(features_file), id_map(), random_walks(walks_file), None
+    nodes = []
+    cluster_ids = []
 
+    with open(clusters, 'r') as lines:
+        for line in lines:
+            node_id, cluster_id = line.strip().split('\t')
+            nodes.append(int(node_id))
+            cluster_ids.append(int(cluster_id))
 
+    clusters = (np.array(nodes), np.array(cluster_ids))
 
+    return g, np.load(features_file), id_map(), random_walks(walks_file), clusters, None
