@@ -1,8 +1,7 @@
 from __future__ import print_function
-import itertools
 
 import numpy as np
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_matrix, save_npz, load_npz
 from sklearn.preprocessing import LabelEncoder
 import json
 import sys
@@ -126,7 +125,6 @@ def load_data_from_graph(graph_file, features_file, labels_file, walks_file=None
             src, dst = l.strip().split('\t')
             return int(src), int(dst)
 
-    encoder = LabelEncoder()
     nodes = []
     labels = []
 
@@ -137,17 +135,27 @@ def load_data_from_graph(graph_file, features_file, labels_file, walks_file=None
             nodes.append(int(node_id))
             labels.append(label)
 
-    encoder.fit(np.array(list(set(labels))))
+    def load_labels():
+        if os.path.isfile('labels.npz'):
+            return load_npz('labels.npz')
 
-    labels_csr = csr_matrix((60000000, encoder.classes_.size), dtype=np.int8)
+        encoder = LabelEncoder()
+        encoder.fit(np.array(list(set(labels))))
 
-    chunks_size = 10000
-    for idx in range(0, len(labels), chunks_size):
-        node_idx = nodes[idx: idx + chunks_size]
-        label_idx = encoder.transform(np.array(labels[idx: idx + chunks_size]))
+        labels_csr = csr_matrix((60000000, encoder.classes_.size), dtype=np.int8)
 
-        labels_csr += csr_matrix((np.ones(len(node_idx)), (node_idx, label_idx)),
-                                 shape=labels_csr.shape, dtype=np.int8)
+        chunks_size = 10000
+        for idx in range(0, len(labels), chunks_size):
+            node_idx = nodes[idx: idx + chunks_size]
+            label_idx = encoder.transform(np.array(labels[idx: idx + chunks_size]))
+
+            labels_csr += csr_matrix((np.ones(len(node_idx)), (node_idx, label_idx)),
+                                     shape=labels_csr.shape, dtype=np.int8)
+
+        save_npz('labels.npz', labels_csr)
+        return labels_csr
+
+    labels = load_labels()
 
     print('Labels loaded')
 
@@ -157,5 +165,5 @@ def load_data_from_graph(graph_file, features_file, labels_file, walks_file=None
 
     print('Features loaded')
 
-    return g, features, id_map(), None, labels_csr, nodes
+    return g, features, id_map(), None, labels, nodes
     #return g, features, id_map(), random_walks(walks_file), clusters, None

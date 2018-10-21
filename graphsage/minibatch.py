@@ -330,6 +330,8 @@ class NodeMinibatchIterator(object):
 
         self.adj = self.construct_adj()
         self.test_adj = self.construct_test_adj()
+        # self.adj = np.zeros((60000000, 1))
+        # self.test_adj = np.zeros((60000000, 1))
 
         # don't train on nodes that only have edges to test set
         # self.train_nodes = [n for n in self.train_nodes if self.deg[id2idx[n]] > 0]
