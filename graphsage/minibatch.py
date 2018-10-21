@@ -362,7 +362,7 @@ class NodeMinibatchIterator(object):
 
     def construct_test_adj(self):
         if os.path.isfile('test-adj.npy'):
-            return np.load('test-adj')
+            return np.load('test-adj.npy')
 
         adj = len(self.id2idx) * np.ones((len(self.id2idx) + 1, self.max_degree), dtype=np.uint32)
 
