@@ -346,6 +346,9 @@ class NodeMinibatchIterator(object):
         return label_vec.toarray()[0]
 
     def construct_adj(self):
+        if os.path.isfile('adj.npy'):
+            return np.load('adj')
+
         adj = np.zeros((len(self.id2idx) + 1, self.max_degree))
         train_nodes = set(self.train_nodes)
 
@@ -369,6 +372,9 @@ class NodeMinibatchIterator(object):
         return adj
 
     def construct_test_adj(self):
+        if os.path.isfile('test-adj.npy'):
+            return np.load('test-adj')
+
         adj = np.zeros((len(self.id2idx) + 1, self.max_degree))
 
         for node_id in self.nodes:
