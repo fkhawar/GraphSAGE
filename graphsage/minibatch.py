@@ -302,7 +302,7 @@ class NodeMinibatchIterator(object):
     """
 
     def __init__(self, G, id2idx,
-                 placeholders, label_map, num_classes,
+                 placeholders, label_map, num_classes, train_nodes,
                  batch_size=100, max_degree=25,
                  **kwargs):
 
@@ -322,7 +322,7 @@ class NodeMinibatchIterator(object):
         self.label_map = label_map
         self.num_classes = num_classes
 
-        self.train_nodes, test_and_val = train_test_split(label_map.keys(), test_size=0.1)
+        self.train_nodes, test_and_val = train_test_split(train_nodes, test_size=0.1)
 
         self.val_nodes, self.test_nodes = train_test_split(test_and_val, test_size=0.5)
 

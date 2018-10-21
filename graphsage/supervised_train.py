@@ -125,10 +125,9 @@ def train(train_data, test_data=None):
     features = train_data[1]
     id_map = train_data[2]
     class_map = train_data[4]
-    if isinstance(list(class_map.values())[0], np.ndarray):
-        num_classes = len(list(class_map.values())[0])
-    else:
-        num_classes = len(set(class_map.values()))
+    train_nodes = train_data[5]
+
+    num_classes = class_map.shape[1]
 
     if not features is None:
         # pad with dummy zero vector
@@ -141,6 +140,7 @@ def train(train_data, test_data=None):
             placeholders, 
             class_map,
             num_classes,
+            train_nodes,
             batch_size=FLAGS.batch_size,
             max_degree=FLAGS.max_degree, 
             context_pairs = context_pairs)
