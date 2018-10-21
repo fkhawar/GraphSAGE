@@ -336,12 +336,12 @@ class NodeMinibatchIterator(object):
 
     def _make_label_vec(self, node):
         label_vec = self.label_map[node]
-        if not isinstance(label_vec, np.ndarray):
-            label_vec = np.zeros((self.num_classes))
-            class_ind = self.label_map[node]
-            label_vec[class_ind] = 1
+        # if not isinstance(label_vec, np.ndarray):
+        #     label_vec = np.zeros((self.num_classes))
+        #     class_ind = self.label_map[node]
+        #     label_vec[class_ind] = 1
 
-        return label_vec
+        return label_vec.toarray()[0]
 
     def construct_adj(self):
         adj = np.zeros((len(self.id2idx) + 1, self.max_degree))

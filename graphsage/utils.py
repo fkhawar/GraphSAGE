@@ -2,7 +2,8 @@ from __future__ import print_function
 import itertools
 
 import numpy as np
-from sklearn.preprocessing import LabelBinarizer
+from scipy.sparse import csr_matrix
+from sklearn.preprocessing import LabelEncoder
 import json
 import sys
 import os
@@ -125,11 +126,9 @@ def load_data_from_graph(graph_file, features_file, labels_file, walks_file=None
             src, dst = l.strip().split('\t')
             return int(src), int(dst)
 
-    encoder = LabelBinarizer()
-
+    encoder = LabelEncoder()
     nodes = []
     labels = []
-    labels_by_node = {}
 
     with open(labels_file, 'r') as lines:
         for line in lines:
@@ -140,17 +139,23 @@ def load_data_from_graph(graph_file, features_file, labels_file, walks_file=None
 
     encoder.fit(np.array(list(set(labels))))
 
-    labels_one_hot = []
+    labels_csr = csr_matrix((60000000, encoder.classes_.size), dtype=np.int8)
+
     chunks_size = 10000
     for idx in range(0, len(labels), chunks_size):
-        labels_one_hot.extend(encoder.transform(np.array(labels[idx: idx + chunks_size])))
+        node_idx = nodes[idx: idx + chunks_size]
+        label_idx = encoder.transform(np.array(labels[idx: idx + chunks_size]))
 
-    for node, node_labels in itertools.groupby(zip(nodes, labels_one_hot), key=lambda x: x[0]):
-        labels_by_node[node] = sum(l for _, l in node_labels)
+        labels_csr += csr_matrix((np.ones(len(node_idx)), (node_idx, label_idx)),
+                                 shape=labels_csr.shape, dtype=np.int8)
+
+    print('Labels loaded')
 
     features = np.load(features_file)
-    #features = np.zeros((55000000, 1))
+    #features = csr_matrix((55000000, 1))
     features[0, :] = np.zeros(features.shape[1])  # unknown vertex
 
-    return g, features, id_map(), None, labels_by_node
+    print('Features loaded')
+
+    return g, features, id_map(), None, labels_csr
     #return g, features, id_map(), random_walks(walks_file), clusters, None
