@@ -389,7 +389,7 @@ class NodeMinibatchIterator(object):
         return self.batch_num * self.batch_size >= len(self.train_nodes)
 
     def batch_feed_dict(self, batch_nodes, val=False):
-        batch1id = batch_nodes
+        batch1id = [n for n in batch_nodes if n in self.id2idx]
         batch1 = [self.id2idx[n] for n in batch1id]
 
         labels = np.vstack([self._make_label_vec(node) for node in batch1id])
