@@ -337,7 +337,7 @@ def train(train_data, test_data=None):
 
 def main(argv=None):
     print("Loading training data..")
-    train_data = load_data_from_graph(FLAGS.train_prefix, 'doc2vec.npy', 'labels.tsv')
+    train_data = load_data_from_graph(FLAGS.train_prefix, 'doc2vec.npy', 'labels.tsv', 'id_map')
     print("Done loading training data..")
     train(train_data)
 
