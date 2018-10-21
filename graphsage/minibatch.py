@@ -348,7 +348,7 @@ class NodeMinibatchIterator(object):
         adj = len(self.id2idx) * np.ones((len(self.id2idx) + 1, self.max_degree), dtype=np.uint32)
         train_nodes = set([self.id2idx[v] for v in self.train_nodes if v in self.id2idx])
 
-        for node_id in self.train_nodes:
+        for node_id in train_nodes:
             neighbors = [e for e in self.test_adj[node_id] if e in train_nodes]
 
             if not len(neighbors):
