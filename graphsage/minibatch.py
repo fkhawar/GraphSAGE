@@ -307,12 +307,11 @@ class NodeMinibatchIterator(object):
                  **kwargs):
 
         self.G = G
-        out_degrees = G.get_out_degrees(np.arange(0, G.num_vertices()))
-        in_degrees = G.get_in_degrees(np.arange(0, G.num_vertices()))
-        self.deg = in_degrees + out_degrees
+        self.nodes = list(id2idx.keys())
 
-        self.nodes = (set(np.arange(0, G.num_vertices())[out_degrees > 0]) &
-                      set(np.arange(0, G.num_vertices())[in_degrees > 0]))
+        out_degrees = G.get_out_degrees(self.nodes)
+        in_degrees = G.get_in_degrees(self.nodes)
+        self.deg = in_degrees + out_degrees
 
         self.id2idx = id2idx
         self.placeholders = placeholders
@@ -328,8 +327,8 @@ class NodeMinibatchIterator(object):
 
         self.test_and_val = set(test_and_val)
 
-        self.adj = self.construct_adj()
         self.test_adj = self.construct_test_adj()
+        self.adj = self.construct_adj()
         # self.adj = np.zeros((60000000, 1))
         # self.test_adj = np.zeros((60000000, 1))
 
@@ -346,36 +345,26 @@ class NodeMinibatchIterator(object):
         return label_vec.toarray()[0]
 
     def construct_adj(self):
-        if os.path.isfile('adj.npy'):
-            return np.load('adj')
-
-        adj = np.zeros((len(self.id2idx) + 1, self.max_degree), dtype=np.uint32)
-        train_nodes = set(self.train_nodes)
+        adj = len(self.id2idx) * np.ones((len(self.id2idx) + 1, self.max_degree), dtype=np.uint32)
+        train_nodes = set([self.id2idx[v] for v in self.train_nodes])
 
         for node_id in self.train_nodes:
-            try:
-                vertex = self.G.vertex(node_id)
-            except ValueError:
-                continue
-
-            neighbors = [int(e) for e in vertex.all_neighbors()]
-            neighbors = list(set(neighbors) & train_nodes)
+            neighbors = [e for e in self.test_adj[node_id] if e in train_nodes]
 
             if not len(neighbors):
                 continue
 
-            adj[self.id2idx[node_id], :] = np.random.choice(
+            adj[node_id, :] = np.random.choice(
                 neighbors, self.max_degree,
                 replace=len(neighbors) < self.max_degree)
 
-        np.save('adj', adj)
         return adj
 
     def construct_test_adj(self):
         if os.path.isfile('test-adj.npy'):
             return np.load('test-adj')
 
-        adj = np.zeros((len(self.id2idx) + 1, self.max_degree), dtype=np.uint32)
+        adj = len(self.id2idx) * np.ones((len(self.id2idx) + 1, self.max_degree), dtype=np.uint32)
 
         for node_id in self.nodes:
             try:
@@ -383,7 +372,7 @@ class NodeMinibatchIterator(object):
             except ValueError:
                 continue
 
-            neighbors = [int(e) for e in vertex.all_neighbors()]
+            neighbors = [self.id2idx[int(e)] for e in vertex.all_neighbors()]
             if not len(neighbors):
                 continue
 

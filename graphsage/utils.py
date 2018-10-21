@@ -81,15 +81,20 @@ def load_data(prefix, normalize=True, load_walks=False):
     return G, feats, id_map, walks, class_map
 
 
-def load_data_from_graph(graph_file, features_file, labels_file, walks_file=None):
+def load_data_from_graph(graph_file, features_file, labels_file, map_file, walks_file=None):
     g = graph_tool.load_graph(graph_file)
 
-    class id_map(object):
-        def __getitem__(self, item):
-            return int(item)
+    # out_degrees = g.get_out_degrees(np.arange(0, g.num_vertices()))
+    # in_degrees = g.get_in_degrees(np.arange(0, g.num_vertices()))
+    #
+    # nodes = (set(np.arange(0, g.num_vertices())[out_degrees > 0]) &
+    #          set(np.arange(0, g.num_vertices())[in_degrees > 0]))
+    #
+    # id_map = {n: idx for idx, n in enumerate(nodes)}
+    with open(map_file, 'r') as vertices:
+        id_map = {int(v): idx for idx, v in enumerate(vertices)}
 
-        def __len__(self):
-            return g.num_vertices()
+    print("IdMap loaded", len(id_map))
 
     class random_walks(object):
         def __init__(self, filename):
@@ -165,5 +170,5 @@ def load_data_from_graph(graph_file, features_file, labels_file, walks_file=None
 
     print('Features loaded')
 
-    return g, features, id_map(), None, labels, nodes
+    return g, features, id_map, None, labels, nodes
     #return g, features, id_map(), random_walks(walks_file), clusters, None
