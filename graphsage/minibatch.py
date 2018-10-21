@@ -349,7 +349,7 @@ class NodeMinibatchIterator(object):
         if os.path.isfile('adj.npy'):
             return np.load('adj')
 
-        adj = np.zeros((len(self.id2idx) + 1, self.max_degree))
+        adj = np.zeros((len(self.id2idx) + 1, self.max_degree), dtype=np.uint32)
         train_nodes = set(self.train_nodes)
 
         for node_id in self.train_nodes:
@@ -375,7 +375,7 @@ class NodeMinibatchIterator(object):
         if os.path.isfile('test-adj.npy'):
             return np.load('test-adj')
 
-        adj = np.zeros((len(self.id2idx) + 1, self.max_degree))
+        adj = np.zeros((len(self.id2idx) + 1, self.max_degree), dtype=np.uint32)
 
         for node_id in self.nodes:
             try:
