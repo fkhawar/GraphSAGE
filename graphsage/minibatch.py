@@ -372,7 +372,9 @@ class NodeMinibatchIterator(object):
             except ValueError:
                 continue
 
-            neighbors = [self.id2idx[int(e)] for e in vertex.all_neighbors()]
+            neighbors = [int(e) for e in vertex.all_neighbors()]
+            neighbors = [self.id2idx[e] for e in neighbors if e in self.id2idx]
+
             if not len(neighbors):
                 continue
 
