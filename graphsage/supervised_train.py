@@ -5,14 +5,13 @@ import os
 import time
 import tensorflow as tf
 import numpy as np
-import sklearn
 from sklearn import metrics
 
 from graphsage.supervised_models import SupervisedGraphsage
 from graphsage.models import SAGEInfo
 from graphsage.minibatch import NodeMinibatchIterator
 from graphsage.neigh_samplers import UniformNeighborSampler
-from graphsage.utils import load_data
+from graphsage.utils import load_data_from_graph
 
 os.environ["CUDA_DEVICE_ORDER"]="PCI_BUS_ID"
 
@@ -43,14 +42,14 @@ flags.DEFINE_integer('samples_2', 10, 'number of samples in layer 2')
 flags.DEFINE_integer('samples_3', 0, 'number of users samples in layer 3. (Only for mean model)')
 flags.DEFINE_integer('dim_1', 128, 'Size of output dim (final is 2x this, if using concat)')
 flags.DEFINE_integer('dim_2', 128, 'Size of output dim (final is 2x this, if using concat)')
-flags.DEFINE_boolean('random_context', True, 'Whether to use random context or direct edges')
+flags.DEFINE_boolean('random_context', False, 'Whether to use random context or direct edges')
 flags.DEFINE_integer('batch_size', 512, 'minibatch size.')
-flags.DEFINE_boolean('sigmoid', False, 'whether to use sigmoid loss')
+flags.DEFINE_boolean('sigmoid', True, 'whether to use sigmoid loss')
 flags.DEFINE_integer('identity_dim', 0, 'Set to positive value to use identity embedding features of that dimension. Default 0.')
 
 #logging, saving, validation settings etc.
 flags.DEFINE_string('base_log_dir', '.', 'base directory for logging and saving embeddings')
-flags.DEFINE_integer('validate_iter', 5000, "how often to run a validation minibatch.")
+flags.DEFINE_integer('validate_iter', 500, "how often to run a validation minibatch.")
 flags.DEFINE_integer('validate_batch_size', 256, "how many nodes per validation sample.")
 flags.DEFINE_integer('gpu', 1, "which gpu to use.")
 flags.DEFINE_integer('print_every', 5, "How often to print training info.")
@@ -119,13 +118,14 @@ def construct_placeholders(num_classes):
     }
     return placeholders
 
+
 def train(train_data, test_data=None):
 
     G = train_data[0]
     features = train_data[1]
     id_map = train_data[2]
-    class_map  = train_data[4]
-    if isinstance(list(class_map.values())[0], list):
+    class_map = train_data[4]
+    if isinstance(list(class_map.values())[0], np.ndarray):
         num_classes = len(list(class_map.values())[0])
     else:
         num_classes = len(set(class_map.values()))
@@ -331,7 +331,7 @@ def train(train_data, test_data=None):
 
 def main(argv=None):
     print("Loading training data..")
-    train_data = load_data(FLAGS.train_prefix)
+    train_data = load_data_from_graph(FLAGS.train_prefix, 'doc2vec.npy', 'labels.tsv')
     print("Done loading training data..")
     train(train_data)
 

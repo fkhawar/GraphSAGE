@@ -1,7 +1,8 @@
 from __future__ import print_function
+import itertools
 
 import numpy as np
-import random
+from sklearn.preprocessing import LabelBinarizer
 import json
 import sys
 import os
@@ -9,12 +10,12 @@ import subprocess
 
 import graph_tool
 
-import networkx as nx
-from networkx.readwrite import json_graph
-version_info = list(map(int, nx.__version__.split('.')))
-major = version_info[0]
-minor = version_info[1]
-assert (major <= 1) and (minor <= 11), "networkx major version > 1.11"
+# import networkx as nx
+# from networkx.readwrite import json_graph
+# version_info = list(map(int, nx.__version__.split('.')))
+# major = version_info[0]
+# minor = version_info[1]
+# assert (major <= 1) and (minor <= 11), "networkx major version > 1.11"
 
 
 SHUF_UTIL = (sys.platform.startswith('linux') and 'shuf') or \
@@ -80,7 +81,7 @@ def load_data(prefix, normalize=True, load_walks=False):
     return G, feats, id_map, walks, class_map
 
 
-def load_data_from_graph(graph_file, features_file, walks_file, clusters):
+def load_data_from_graph(graph_file, features_file, labels_file, walks_file=None):
     g = graph_tool.load_graph(graph_file)
 
     class id_map(object):
@@ -124,18 +125,27 @@ def load_data_from_graph(graph_file, features_file, walks_file, clusters):
             src, dst = l.strip().split('\t')
             return int(src), int(dst)
 
+    encoder = LabelBinarizer()
+
     nodes = []
-    cluster_ids = []
+    labels = []
+    labels_by_node = {}
 
-    with open(clusters, 'r') as lines:
+    with open(labels_file, 'r') as lines:
         for line in lines:
-            node_id, cluster_id = line.strip().split('\t')
-            nodes.append(int(node_id))
-            cluster_ids.append(int(cluster_id))
+            line = line.strip()
+            node_id, label = line.split('\t')
+            nodes.append(node_id)
+            labels.append(label)
 
-    clusters = (np.array(nodes), np.array(cluster_ids))
+    labels = encoder.fit_transform(np.array(labels))
+
+    for node, node_labels in itertools.groupby(zip(nodes, labels), key=lambda x: x[0]):
+        labels_by_node[node] = sum(l for _, l in node_labels)
 
     features = np.load(features_file)
+    #features = np.zeros((10000000, 1))
     features[0, :] = np.zeros(features.shape[1])  # unknown vertex
 
-    return g, features, id_map(), random_walks(walks_file), clusters, None
+    return g, features, id_map(), None, labels_by_node
+    #return g, features, id_map(), random_walks(walks_file), clusters, None

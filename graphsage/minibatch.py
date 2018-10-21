@@ -1,5 +1,6 @@
 from __future__ import division
 from __future__ import print_function
+from sklearn.model_selection import train_test_split
 
 import os
 
@@ -306,7 +307,13 @@ class NodeMinibatchIterator(object):
                  **kwargs):
 
         self.G = G
-        self.nodes = G.nodes()
+        out_degrees = G.get_out_degrees(np.arange(0, G.num_vertices()))
+        in_degrees = G.get_in_degrees(np.arange(0, G.num_vertices()))
+        self.deg = in_degrees + out_degrees
+
+        self.nodes = (set(np.arange(0, G.num_vertices())[out_degrees > 0]) &
+                      set(np.arange(0, G.num_vertices())[in_degrees > 0]))
+
         self.id2idx = id2idx
         self.placeholders = placeholders
         self.batch_size = batch_size
@@ -315,59 +322,68 @@ class NodeMinibatchIterator(object):
         self.label_map = label_map
         self.num_classes = num_classes
 
-        self.adj, self.deg = self.construct_adj()
+        self.train_nodes, test_and_val = train_test_split(label_map.keys(), test_size=0.1)
+        self.train_nodes = set(self.train_nodes)
+
+        self.val_nodes, self.test_nodes = train_test_split(test_and_val, test_size=0.5)
+
+        self.test_and_val = set(test_and_val)
+
+        self.adj = self.construct_adj()
         self.test_adj = self.construct_test_adj()
 
-        self.val_nodes = [n for n in self.G.nodes() if self.G.node[n]['val']]
-        self.test_nodes = [n for n in self.G.nodes() if self.G.node[n]['test']]
-
-        self.no_train_nodes_set = set(self.val_nodes + self.test_nodes)
-        self.train_nodes = set(G.nodes()).difference(self.no_train_nodes_set)
         # don't train on nodes that only have edges to test set
-        self.train_nodes = [n for n in self.train_nodes if self.deg[id2idx[n]] > 0]
+        # self.train_nodes = [n for n in self.train_nodes if self.deg[id2idx[n]] > 0]
 
     def _make_label_vec(self, node):
-        label = self.label_map[node]
-        if isinstance(label, list):
-            label_vec = np.array(label)
-        else:
+        label_vec = self.label_map[node]
+        if not isinstance(label_vec, np.ndarray):
             label_vec = np.zeros((self.num_classes))
             class_ind = self.label_map[node]
             label_vec[class_ind] = 1
+
         return label_vec
 
     def construct_adj(self):
-        adj = len(self.id2idx) * np.ones((len(self.id2idx) + 1, self.max_degree))
-        deg = np.zeros((len(self.id2idx),))
+        adj = np.zeros((len(self.id2idx) + 1, self.max_degree))
 
-        for nodeid in self.G.nodes():
-            if self.G.node[nodeid]['test'] or self.G.node[nodeid]['val']:
+        for node_id in self.train_nodes:
+            try:
+                vertex = self.G.vertex(node_id)
+            except ValueError:
                 continue
-            neighbors = np.array([self.id2idx[neighbor]
-                                  for neighbor in self.G.neighbors(nodeid)
-                                  if (not self.G[nodeid][neighbor]['train_removed'])])
-            deg[self.id2idx[nodeid]] = len(neighbors)
-            if len(neighbors) == 0:
+
+            neighbors = [int(e) for e in vertex.all_neighbors()]
+            neighbors = list(set(neighbors) & self.train_nodes)
+
+            if not len(neighbors):
                 continue
-            if len(neighbors) > self.max_degree:
-                neighbors = np.random.choice(neighbors, self.max_degree, replace=False)
-            elif len(neighbors) < self.max_degree:
-                neighbors = np.random.choice(neighbors, self.max_degree, replace=True)
-            adj[self.id2idx[nodeid], :] = neighbors
-        return adj, deg
+
+            adj[self.id2idx[node_id], :] = np.random.choice(
+                neighbors, self.max_degree,
+                replace=len(neighbors) < self.max_degree)
+
+        np.save('adj', adj)
+        return adj
 
     def construct_test_adj(self):
-        adj = len(self.id2idx) * np.ones((len(self.id2idx) + 1, self.max_degree))
-        for nodeid in self.G.nodes():
-            neighbors = np.array([self.id2idx[neighbor]
-                                  for neighbor in self.G.neighbors(nodeid)])
-            if len(neighbors) == 0:
+        adj = np.zeros((len(self.id2idx) + 1, self.max_degree))
+
+        for node_id in self.nodes:
+            try:
+                vertex = self.G.vertex(node_id)
+            except ValueError:
                 continue
-            if len(neighbors) > self.max_degree:
-                neighbors = np.random.choice(neighbors, self.max_degree, replace=False)
-            elif len(neighbors) < self.max_degree:
-                neighbors = np.random.choice(neighbors, self.max_degree, replace=True)
-            adj[self.id2idx[nodeid], :] = neighbors
+
+            neighbors = [int(e) for e in vertex.all_neighbors()]
+            if not len(neighbors):
+                continue
+
+            adj[self.id2idx[node_id], :] = np.random.choice(
+                neighbors, self.max_degree,
+                replace=len(neighbors) < self.max_degree)
+
+        np.save('test-adj', adj)
         return adj
 
     def end(self):
