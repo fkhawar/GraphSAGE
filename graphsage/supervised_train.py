@@ -257,8 +257,8 @@ def train(train_data, test_data=None):
     avg_time = 0.0
     epoch_val_costs = []
 
-    train_adj_info = tf.assign(adj_info, minibatch.adj)
-    val_adj_info = tf.assign(adj_info, minibatch.test_adj)
+    #train_adj_info = tf.assign(adj_info, minibatch.adj)
+    #val_adj_info = tf.assign(adj_info, minibatch.test_adj)
     for epoch in range(FLAGS.epochs): 
         minibatch.shuffle() 
 
@@ -277,12 +277,16 @@ def train(train_data, test_data=None):
 
             if iter % FLAGS.validate_iter == 0:
                 # Validation
-                sess.run(val_adj_info.op)
+                #sess.run(val_adj_info.op)
+                sess.run([adj_info], feed_dict={adj_info_ph: minibatch.test_adj})
+
                 if FLAGS.validate_batch_size == -1:
                     val_cost, val_f1_mic, val_f1_mac, duration = incremental_evaluate(sess, model, minibatch, FLAGS.batch_size)
                 else:
                     val_cost, val_f1_mic, val_f1_mac, duration = evaluate(sess, model, minibatch, FLAGS.validate_batch_size)
-                sess.run(train_adj_info.op)
+
+                sess.run([adj_info], feed_dict={adj_info_ph: minibatch.adj})
+                #sess.run(train_adj_info.op)
                 epoch_val_costs[-1] += val_cost
 
             if total_steps % FLAGS.print_every == 0:
@@ -312,7 +316,8 @@ def train(train_data, test_data=None):
                 break
     
     print("Optimization Finished!")
-    sess.run(val_adj_info.op)
+    #sess.run(val_adj_info.op)
+    sess.run([adj_info], feed_dict={adj_info_ph: minibatch.test_adj})
     val_cost, val_f1_mic, val_f1_mac, duration = incremental_evaluate(sess, model, minibatch, FLAGS.batch_size)
     print("Full validation stats:",
                   "loss=", "{:.5f}".format(val_cost),
@@ -328,6 +333,7 @@ def train(train_data, test_data=None):
     with open(log_dir() + "test_stats.txt", "w") as fp:
         fp.write("loss={:.5f} f1_micro={:.5f} f1_macro={:.5f}".
                 format(val_cost, val_f1_mic, val_f1_mac))
+
 
 def main(argv=None):
     print("Loading training data..")

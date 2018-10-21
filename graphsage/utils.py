@@ -135,16 +135,21 @@ def load_data_from_graph(graph_file, features_file, labels_file, walks_file=None
         for line in lines:
             line = line.strip()
             node_id, label = line.split('\t')
-            nodes.append(node_id)
+            nodes.append(int(node_id))
             labels.append(label)
 
-    labels = encoder.fit_transform(np.array(labels))
+    encoder.fit(np.array(list(set(labels))))
 
-    for node, node_labels in itertools.groupby(zip(nodes, labels), key=lambda x: x[0]):
+    labels_one_hot = []
+    chunks_size = 10000
+    for idx in range(0, len(labels), chunks_size):
+        labels_one_hot.extend(encoder.transform(np.array(labels[idx: idx + chunks_size])))
+
+    for node, node_labels in itertools.groupby(zip(nodes, labels_one_hot), key=lambda x: x[0]):
         labels_by_node[node] = sum(l for _, l in node_labels)
 
     features = np.load(features_file)
-    #features = np.zeros((10000000, 1))
+    #features = np.zeros((55000000, 1))
     features[0, :] = np.zeros(features.shape[1])  # unknown vertex
 
     return g, features, id_map(), None, labels_by_node

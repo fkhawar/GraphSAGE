@@ -323,7 +323,6 @@ class NodeMinibatchIterator(object):
         self.num_classes = num_classes
 
         self.train_nodes, test_and_val = train_test_split(label_map.keys(), test_size=0.1)
-        self.train_nodes = set(self.train_nodes)
 
         self.val_nodes, self.test_nodes = train_test_split(test_and_val, test_size=0.5)
 
@@ -346,6 +345,7 @@ class NodeMinibatchIterator(object):
 
     def construct_adj(self):
         adj = np.zeros((len(self.id2idx) + 1, self.max_degree))
+        train_nodes = set(self.train_nodes)
 
         for node_id in self.train_nodes:
             try:
@@ -354,7 +354,7 @@ class NodeMinibatchIterator(object):
                 continue
 
             neighbors = [int(e) for e in vertex.all_neighbors()]
-            neighbors = list(set(neighbors) & self.train_nodes)
+            neighbors = list(set(neighbors) & train_nodes)
 
             if not len(neighbors):
                 continue
