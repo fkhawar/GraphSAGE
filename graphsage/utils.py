@@ -157,6 +157,8 @@ def load_data_from_graph(graph_file, features_file, labels_file, map_file, walks
             labels_csr += csr_matrix((np.ones(len(node_idx)), (node_idx, label_idx)),
                                      shape=labels_csr.shape, dtype=np.int8)
 
+        labels_csr[labels_csr > 1] = 1
+
         save_npz('labels.npz', labels_csr)
         return labels_csr
 
