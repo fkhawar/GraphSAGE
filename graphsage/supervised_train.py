@@ -82,7 +82,7 @@ def evaluate(sess, model, minibatch_iter, size=None):
 
 
 def log_dir():
-    log_dir = FLAGS.base_log_dir + "/sup-" + FLAGS.train_prefix.split("/")[-2]
+    log_dir = FLAGS.base_log_dir + "/sup-" + FLAGS.train_prefix.split("/")[-1]
     log_dir += "/{model:s}_{model_size:s}_{lr:0.4f}/".format(
         model=FLAGS.model,
         model_size=FLAGS.model_size,
@@ -353,7 +353,12 @@ def train(train_data, test_data=None):
 
 def main(argv=None):
     print("Loading training data..")
-    train_data = load_data_from_graph(FLAGS.train_prefix, 'doc2vec.npy', 'labels.tsv', 'id_map')
+    train_data = load_data_from_graph(
+        FLAGS.train_prefix + '/graph.gt',
+        FLAGS.train_prefix + '/doc2vec.npy',
+        FLAGS.train_prefix + '/labels.tsv',
+        FLAGS.train_prefix + '/id_map'
+    )
     print("Done loading training data..")
     train(train_data)
 

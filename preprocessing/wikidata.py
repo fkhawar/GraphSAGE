@@ -7,7 +7,12 @@ def project(line, langs=('enwiki', 'ruwiki', 'ukwiki', 'eswiki')):
     if not line:
         return
 
-    row = ujson.loads(line.strip())
+    try:
+        row = ujson.loads(line.strip().rstrip(','))
+    except (ValueError, TypeError):
+        print(line, 'is not valid json')
+        return
+
     output = {lang: row['sitelinks'].get(lang, {}).get('title', '') for lang in langs}
     return ujson.dumps(output)
 

@@ -3,11 +3,14 @@ from __future__ import print_function
 from sklearn.model_selection import train_test_split
 
 import os
-
+import tensorflow as tf
 import numpy as np
 import itertools
 
 np.random.seed(123)
+
+flags = tf.app.flags
+FLAGS = flags.FLAGS
 
 
 class EdgeMinibatchIterator(object):
@@ -361,8 +364,8 @@ class NodeMinibatchIterator(object):
         return adj
 
     def construct_test_adj(self):
-        if os.path.isfile('test-adj.npy'):
-            return np.load('test-adj.npy')
+        if os.path.isfile(FLAGS.train_prefix + '/test-adj.npy'):
+            return np.load(FLAGS.train_prefix + '/test-adj.npy')
 
         adj = len(self.id2idx) * np.ones((len(self.id2idx) + 1, self.max_degree), dtype=np.uint32)
 
@@ -382,7 +385,7 @@ class NodeMinibatchIterator(object):
                 neighbors, self.max_degree,
                 replace=len(neighbors) < self.max_degree)
 
-        np.save('test-adj', adj)
+        np.save(FLAGS.train_prefix + '/test-adj', adj)
         return adj
 
     def end(self):
