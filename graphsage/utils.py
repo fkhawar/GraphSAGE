@@ -7,7 +7,7 @@ import json
 import sys
 import os
 import subprocess
-
+import tensorflow as tf
 import graph_tool
 
 # import networkx as nx
@@ -20,6 +20,10 @@ import graph_tool
 
 SHUF_UTIL = (sys.platform.startswith('linux') and 'shuf') or \
             (sys.platform.startswith('darwin') and 'gshuf') or ''
+
+
+flags = tf.app.flags
+FLAGS = flags.FLAGS
 
 
 def load_data(prefix, normalize=True, load_walks=False):
@@ -141,8 +145,8 @@ def load_data_from_graph(graph_file, features_file, labels_file, map_file, walks
             labels.append(label)
 
     def load_labels():
-        if os.path.isfile('labels.npz'):
-            return load_npz('labels.npz')
+        if os.path.isfile(FLAGS.train_prefix + '/labels.npz'):
+            return load_npz(FLAGS.train_prefix + '/labels.npz')
 
         encoder = LabelEncoder()
         encoder.fit(np.array(list(set(labels))))
@@ -159,7 +163,7 @@ def load_data_from_graph(graph_file, features_file, labels_file, map_file, walks
 
         labels_csr[labels_csr > 1] = 1
 
-        save_npz('labels.npz', labels_csr)
+        save_npz(FLAGS.train_prefix + '/labels.npz', labels_csr)
         return labels_csr
 
     labels = load_labels()
