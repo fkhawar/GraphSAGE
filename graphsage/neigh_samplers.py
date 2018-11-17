@@ -12,6 +12,7 @@ FLAGS = flags.FLAGS
 Classes that are used to sample node neighborhoods
 """
 
+
 class UniformNeighborSampler(Layer):
     """
     Uniformly samples neighbors.

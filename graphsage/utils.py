@@ -171,8 +171,8 @@ def load_data_from_graph(graph_file, features_file, labels_file, map_file, walks
     print('Labels loaded')
 
     features = np.load(features_file)
-    #features = csr_matrix((55000000, 1))
-    features[0, :] = np.zeros(features.shape[1])  # unknown vertex
+    # features = csr_matrix((55000000, 1))
+    # features[0, :] = np.zeros(features.shape[1])  # unknown vertex
 
     print('Features loaded')
 

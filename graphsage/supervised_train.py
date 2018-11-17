@@ -128,16 +128,16 @@ def construct_placeholders(num_classes):
 
 def train(train_data, test_data=None):
     G = train_data[0]
-    features = train_data[1]
+    features_np = train_data[1]
     id_map = train_data[2]
     class_map = train_data[4]
     train_nodes = train_data[5]
 
     num_classes = class_map.shape[1]
 
-    if not features is None:
+    if not features_np is None:
         # pad with dummy zero vector
-        features = np.vstack([features, np.zeros((features.shape[1],))])
+        features_np = np.vstack([features_np, np.zeros((features_np.shape[1],))])
 
     context_pairs = train_data[3] if FLAGS.random_context else None
     placeholders = construct_placeholders(num_classes)
@@ -152,6 +152,9 @@ def train(train_data, test_data=None):
                                       context_pairs=context_pairs)
     adj_info_ph = tf.placeholder(tf.int32, shape=minibatch.adj.shape)
     adj_info = tf.Variable(adj_info_ph, trainable=False, name="adj_info")
+
+    features_ph = tf.placeholder(tf.float32, shape=features_np.shape)
+    features = tf.Variable(features_ph, trainable=False, name="features")
 
     if FLAGS.model == 'graphsage_mean':
         # Create model
@@ -255,7 +258,8 @@ def train(train_data, test_data=None):
     summary_writer = tf.summary.FileWriter(log_dir(), sess.graph)
 
     # Init variables
-    sess.run(tf.global_variables_initializer(), feed_dict={adj_info_ph: minibatch.adj})
+    sess.run(tf.global_variables_initializer(), feed_dict={adj_info_ph: minibatch.adj,
+                                                           features_ph: features_np})
 
     # Train model
 
@@ -263,8 +267,9 @@ def train(train_data, test_data=None):
     avg_time = 0.0
     epoch_val_costs = []
 
-    # train_adj_info = tf.assign(adj_info, minibatch.adj)
-    # val_adj_info = tf.assign(adj_info, minibatch.test_adj)
+    up_adj_info = tf.assign(adj_info, adj_info_ph, name='up_adj')
+    up_features = tf.assign(features, features_ph, name='up_features')
+
     for epoch in range(FLAGS.epochs):
         minibatch.shuffle()
 
@@ -283,8 +288,8 @@ def train(train_data, test_data=None):
 
             if iter % FLAGS.validate_iter == 0:
                 # Validation
-                # sess.run(val_adj_info.op)
-                sess.run([adj_info], feed_dict={adj_info_ph: minibatch.test_adj})
+                sess.run(up_adj_info.op, feed_dict={adj_info_ph: minibatch.test_adj})
+                # sess.run([adj_info], feed_dict={adj_info_ph: minibatch.test_adj})
 
                 if FLAGS.validate_batch_size == -1:
                     val_cost, val_f1_mic, val_f1_mac, duration = incremental_evaluate(sess, model, minibatch,
@@ -293,8 +298,8 @@ def train(train_data, test_data=None):
                     val_cost, val_f1_mic, val_f1_mac, duration = evaluate(sess, model, minibatch,
                                                                           FLAGS.validate_batch_size)
 
-                sess.run([adj_info], feed_dict={adj_info_ph: minibatch.adj})
-                # sess.run(train_adj_info.op)
+                # sess.run([adj_info], feed_dict={adj_info_ph: minibatch.adj})
+                sess.run(up_adj_info.op, feed_dict={adj_info_ph: minibatch.adj})
                 epoch_val_costs[-1] += val_cost
 
             if total_steps % FLAGS.print_every == 0:
@@ -325,14 +330,20 @@ def train(train_data, test_data=None):
 
     print("Optimization Finished!")
 
+    sess.run(up_adj_info.op, feed_dict={adj_info_ph: minibatch.test_adj})
+    sess.run(up_features.op, feed_dict={features_ph: features_np})
+
     tf.saved_model.simple_save(
         sess, log_dir() + '/saved_model',
         {'nodes': placeholders['batch'],
-         'adjacency': adj_info_ph},
+         'batch_size': placeholders['batch_size'],
+         # 'adjacency': adj_info_ph,
+         # 'features': features_ph
+         },
         {'embeddings': model.outputs1}
     )
     # sess.run(val_adj_info.op)
-    sess.run([adj_info], feed_dict={adj_info_ph: minibatch.test_adj})
+
     val_cost, val_f1_mic, val_f1_mac, duration = incremental_evaluate(sess, model, minibatch, FLAGS.batch_size)
     print("Full validation stats:",
           "loss=", "{:.5f}".format(val_cost),
