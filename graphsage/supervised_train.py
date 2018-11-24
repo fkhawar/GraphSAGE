@@ -343,7 +343,7 @@ def train(train_data, test_data=None):
         if total_steps > FLAGS.max_total_steps:
             break
 
-    print("Optimization Finished!")
+    print("Optimization Finished! Best save model", best)
 
     sess.run(up_adj_info.op, feed_dict={adj_info_ph: minibatch.test_adj})
     sess.run(up_features.op, feed_dict={features_ph: features_np})
