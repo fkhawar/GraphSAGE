@@ -51,7 +51,7 @@ flags.DEFINE_integer('identity_dim', 0,
 # logging, saving, validation settings etc.
 flags.DEFINE_string('base_log_dir', '.', 'base directory for logging and saving embeddings')
 flags.DEFINE_integer('validate_iter', 500, "how often to run a validation minibatch.")
-flags.DEFINE_integer('validate_batch_size', 256, "how many nodes per validation sample.")
+flags.DEFINE_integer('validate_batch_size', 1024, "how many nodes per validation sample.")
 flags.DEFINE_integer('gpu', 1, "which gpu to use.")
 flags.DEFINE_integer('print_every', 5, "How often to print training info.")
 flags.DEFINE_integer('max_total_steps', 10 ** 10, "Maximum total number of iterations")
@@ -83,9 +83,10 @@ def evaluate(sess, model, minibatch_iter, size=None):
 
 def log_dir():
     log_dir = FLAGS.base_log_dir + "/sup-" + FLAGS.train_prefix.split("/")[-1]
-    log_dir += "/{model:s}_{model_size:s}_{lr:0.4f}/".format(
+    log_dir += "/{model:s}_{model_size:s}_{dropout:0.3f}_{lr:0.4f}/".format(
         model=FLAGS.model,
         model_size=FLAGS.model_size,
+        dropout=FLAGS.dropout,
         lr=FLAGS.learning_rate)
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
@@ -266,6 +267,7 @@ def train(train_data, test_data=None):
     total_steps = 0
     avg_time = 0.0
     epoch_val_costs = []
+    best = 0
 
     up_adj_info = tf.assign(adj_info, adj_info_ph, name='up_adj')
     up_features = tf.assign(features, features_ph, name='up_features')
@@ -297,6 +299,19 @@ def train(train_data, test_data=None):
                 else:
                     val_cost, val_f1_mic, val_f1_mac, duration = evaluate(sess, model, minibatch,
                                                                           FLAGS.validate_batch_size)
+
+                if val_f1_mic > best:
+                    print("Saving best model")
+                    tf.saved_model.simple_save(
+                        sess, log_dir() + '/saved_model_best',
+                        {'nodes': placeholders['batch'],
+                         'batch_size': placeholders['batch_size'],
+                         # 'adjacency': adj_info_ph,
+                         # 'features': features_ph
+                         },
+                        {'embeddings': model.outputs1}
+                    )
+                    best = val_f1_mic
 
                 # sess.run([adj_info], feed_dict={adj_info_ph: minibatch.adj})
                 sess.run(up_adj_info.op, feed_dict={adj_info_ph: minibatch.adj})
