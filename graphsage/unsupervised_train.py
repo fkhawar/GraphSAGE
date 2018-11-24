@@ -262,7 +262,7 @@ def train(train_data, test_data=None):
 
     # Init variables
     sess.run(tf.global_variables_initializer(), feed_dict={adj_info_ph: minibatch.adj,
-                                                           features_ph: features
+                                                           features_ph: features_np
                                                            })
 
     # Train model
