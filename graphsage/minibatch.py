@@ -37,8 +37,8 @@ class EdgeMinibatchIterator(object):
         out_degrees = G.get_out_degrees(np.arange(0, G.num_vertices()))
         in_degrees = G.get_in_degrees(np.arange(0, G.num_vertices()))
 
-        self.nodes = (set(np.arange(0, G.num_vertices())[out_degrees > 0]) &
-                      set(np.arange(0, G.num_vertices())[in_degrees > 0]))
+        self.nodes = list(set(np.arange(0, G.num_vertices())[out_degrees > 0]) &
+                          set(np.arange(0, G.num_vertices())[in_degrees > 0]))
 
         out_degrees = G.get_out_degrees(self.nodes)
         in_degrees = G.get_in_degrees(self.nodes)
@@ -68,8 +68,8 @@ class EdgeMinibatchIterator(object):
                             if src in train_nodes_set and dst in train_nodes_set]
         self.val_edges = [(src, dst) for (src, dst) in edges
                           if src not in train_nodes_set or dst not in train_nodes_set]
-        #if not n2v_retrain:
-            # self.train_edges = self._remove_isolated(self.train_edges)
+        # if not n2v_retrain:
+        # self.train_edges = self._remove_isolated(self.train_edges)
 
         # else:
         #     if fixed_n2v:
@@ -77,8 +77,8 @@ class EdgeMinibatchIterator(object):
         #     else:
         #         self.train_edges = self.val_edges = self.edges
 
-        #print(len([n for n in G.nodes() if not G.node[n]['test'] and not G.node[n]['val']]), 'train nodes')
-        #print(len([n for n in G.nodes() if G.node[n]['test'] or G.node[n]['val']]), 'test nodes')
+        # print(len([n for n in G.nodes() if not G.node[n]['test'] and not G.node[n]['val']]), 'train nodes')
+        # print(len([n for n in G.nodes() if G.node[n]['test'] or G.node[n]['val']]), 'test nodes')
         self.val_set_size = len(self.val_edges)
 
     # def _n2v_prune(self, edges):
@@ -195,7 +195,7 @@ class EdgeMinibatchIterator(object):
         val_edges = []
         for n1, n2 in self.G.edges():
             if (self.G.node[n1]['val'] or self.G.node[n1]['test']
-                or self.G.node[n2]['val'] or self.G.node[n2]['test']):
+                    or self.G.node[n2]['val'] or self.G.node[n2]['test']):
                 val_edges.append((n1, n2))
             else:
                 train_edges.append((n1, n2))
