@@ -100,73 +100,41 @@ def load_data_from_graph(graph_file, features_file, labels_file, map_file, walks
 
     print("IdMap loaded", len(id_map))
 
-    class random_walks(object):
-        def __init__(self, filename):
-            self.filename = filename
-            self._len = None
-
-            self._open()
-
-        def _open(self):
-            print("Shuffling...")
-            # p = subprocess.Popen([SHUF_UTIL, '-o', self.filename + '.shuffle', self.filename])
-            # p.wait()
-            self.f = open(self.filename + '.shuffle', 'r')
-
-        def __len__(self):
-            if self._len is not None:
-                return self._len
-
-            p = subprocess.Popen(['wc', '-l', self.filename],
-                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-            result, err = p.communicate()
-            if p.returncode != 0:
-                raise IOError(err)
-
-            self._len = int(result.strip().split()[0])
-            return self._len
-
-        def __iter__(self):
-            return self
-
-        def next(self):
-            l = next(self.f)
-            src, dst = l.strip().split('\t')
-            return int(src), int(dst)
-
+    walks = [map(int, line.strip().split()) for line in open(walks_file)] if walks_file else []
     nodes = []
     labels = []
 
-    with open(labels_file, 'r') as lines:
-        for line in lines:
-            line = line.strip()
-            node_id, label = line.split('\t')
-            nodes.append(int(node_id))
-            labels.append(label)
+    if labels_file:
+        with open(labels_file, 'r') as lines:
+            for line in lines:
+                line = line.strip()
+                node_id, label = line.split('\t')
+                nodes.append(int(node_id))
+                labels.append(label)
 
-    def load_labels():
-        if os.path.isfile(FLAGS.train_prefix + '/labels.npz'):
-            return load_npz(FLAGS.train_prefix + '/labels.npz')
+        def load_labels():
+            if os.path.isfile(FLAGS.train_prefix + '/labels.npz'):
+                return load_npz(FLAGS.train_prefix + '/labels.npz')
 
-        encoder = LabelEncoder()
-        encoder.fit(np.array(list(set(labels))))
+            encoder = LabelEncoder()
+            encoder.fit(np.array(list(set(labels))))
 
-        labels_csr = csr_matrix((60000000, encoder.classes_.size), dtype=np.int8)
+            labels_csr = csr_matrix((60000000, encoder.classes_.size), dtype=np.int8)
 
-        chunks_size = 10000
-        for idx in range(0, len(labels), chunks_size):
-            node_idx = nodes[idx: idx + chunks_size]
-            label_idx = encoder.transform(np.array(labels[idx: idx + chunks_size]))
+            chunks_size = 10000
+            for idx in range(0, len(labels), chunks_size):
+                node_idx = nodes[idx: idx + chunks_size]
+                label_idx = encoder.transform(np.array(labels[idx: idx + chunks_size]))
 
-            labels_csr += csr_matrix((np.ones(len(node_idx)), (node_idx, label_idx)),
-                                     shape=labels_csr.shape, dtype=np.int8)
+                labels_csr += csr_matrix((np.ones(len(node_idx)), (node_idx, label_idx)),
+                                         shape=labels_csr.shape, dtype=np.int8)
 
-        labels_csr[labels_csr > 1] = 1
+            labels_csr[labels_csr > 1] = 1
 
-        save_npz(FLAGS.train_prefix + '/labels.npz', labels_csr)
-        return labels_csr
+            save_npz(FLAGS.train_prefix + '/labels.npz', labels_csr)
+            return labels_csr
 
-    labels = load_labels()
+        labels = load_labels()
 
     print('Labels loaded')
 
@@ -176,5 +144,5 @@ def load_data_from_graph(graph_file, features_file, labels_file, map_file, walks
 
     print('Features loaded')
 
-    return g, features, id_map, None, labels, nodes
+    return g, features, id_map, None, labels, walks
     #return g, features, id_map(), random_walks(walks_file), clusters, None

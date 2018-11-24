@@ -7,7 +7,7 @@ import tensorflow as tf
 import numpy as np
 
 from graphsage.models import SampleAndAggregate, SAGEInfo, Node2VecModel
-from graphsage.minibatch import EdgeMinibatchIterator, LazyMinibatchIterator
+from graphsage.minibatch import EdgeMinibatchIterator
 from graphsage.neigh_samplers import UniformNeighborSampler
 from graphsage.utils import load_data, load_data_from_graph
 
@@ -39,7 +39,7 @@ flags.DEFINE_integer('samples_1', 25, 'number of samples in layer 1')
 flags.DEFINE_integer('samples_2', 10, 'number of users samples in layer 2')
 flags.DEFINE_integer('dim_1', 128, 'Size of output dim (final is 2x this, if using concat)')
 flags.DEFINE_integer('dim_2', 128, 'Size of output dim (final is 2x this, if using concat)')
-flags.DEFINE_boolean('random_context', True, 'Whether to use random context or direct edges')
+flags.DEFINE_boolean('random_context', False, 'Whether to use random context or direct edges')
 flags.DEFINE_integer('neg_sample_size', 20, 'number of negative samples')
 flags.DEFINE_integer('batch_size', 256, 'minibatch size.')
 flags.DEFINE_integer('n2v_test_epochs', 1, 'Number of new SGD epochs for n2v.')
@@ -125,12 +125,12 @@ def save_val_embeddings(sess, model, minibatch_iter, size, out_dir, mod="", feed
         fp.write("\n".join(map(str, nodes)))
 
 
-def construct_placeholders(emb_dim):
+def construct_placeholders():
     # Define placeholders
     placeholders = {
         'batch1': tf.placeholder(tf.int32, shape=(None), name='batch1'),
         'batch2': tf.placeholder(tf.int32, shape=(None), name='batch2'),
-        'features': tf.placeholder(tf.float32, shape=emb_dim, name='features'),
+        #'features': tf.placeholder(tf.float32, shape=emb_dim, name='features'),
         # negative samples for all nodes in the batch
         'neg_samples': tf.placeholder(tf.int32, shape=(None,), name='neg_samples'),
         'dropout': tf.placeholder_with_default(0., shape=(), name='dropout'),
@@ -141,20 +141,19 @@ def construct_placeholders(emb_dim):
 
 def train(train_data, test_data=None):
     G = train_data[0]
-    features = train_data[1]
+    features_np = train_data[1]
     id_map = train_data[2]
-    clusters = train_data[4]
+    walks = train_data[-1]
 
-    if not features is None:
+    if not features_np is None:
         # pad with dummy zero vector
-        features = np.vstack([features, np.zeros((features.shape[1],))])
+        features = np.vstack([features_np, np.zeros((features_np.shape[1],))])
 
     context_pairs = train_data[3] if FLAGS.random_context else None
-    placeholders = construct_placeholders(features.shape)
-    minibatch = LazyMinibatchIterator(
+    placeholders = construct_placeholders()
+    minibatch = EdgeMinibatchIterator(
         G,
         id_map,
-        clusters,
         placeholders,
         batch_size=FLAGS.batch_size,
         max_degree=FLAGS.max_degree,
@@ -163,6 +162,9 @@ def train(train_data, test_data=None):
 
     adj_info_ph = tf.placeholder(tf.int32, shape=minibatch.adj.shape)
     adj_info = tf.Variable(adj_info_ph, trainable=False, name="adj_info")
+
+    features_ph = tf.placeholder(tf.float32, shape=features_np.shape)
+    features = tf.Variable(features_ph, trainable=False, name="features")
 
     if FLAGS.model == 'graphsage_mean':
         # Create model
@@ -260,7 +262,7 @@ def train(train_data, test_data=None):
 
     # Init variables
     sess.run(tf.global_variables_initializer(), feed_dict={adj_info_ph: minibatch.adj,
-                                                           placeholders['features']: features
+                                                           features_ph: features
                                                            })
 
     # Train model
@@ -272,8 +274,9 @@ def train(train_data, test_data=None):
     avg_time = 0.0
     epoch_val_costs = []
 
-    # train_adj_info = tf.assign(adj_info, minibatch.adj)
-    # val_adj_info = tf.assign(adj_info, minibatch.test_adj)
+    up_adj_info = tf.assign(adj_info, adj_info_ph, name='up_adj')
+    up_features = tf.assign(features, features_ph, name='up_features')
+
     for epoch in range(FLAGS.epochs):
         # minibatch.shuffle()
 
@@ -283,9 +286,7 @@ def train(train_data, test_data=None):
         while not minibatch.end():
             # Construct feed dictionary
             feed_dict = minibatch.next_minibatch_feed_dict()
-            feed_dict.update({placeholders['dropout']: FLAGS.dropout,
-                              # placeholders['features']: features,
-                              adj_info_ph: minibatch.adj})
+            feed_dict.update({placeholders['dropout']: FLAGS.dropout})
 
             t = time.time()
             # Training step
@@ -302,12 +303,12 @@ def train(train_data, test_data=None):
 
             if iter % FLAGS.validate_iter == 0:
                 # Validation
+                sess.run(up_adj_info.op, feed_dict={adj_info_ph: minibatch.test_adj})
                 val_cost, ranks, val_mrr, duration = evaluate(sess, model, minibatch,
-                                                              size=FLAGS.validate_batch_size,
-                                                              feed={adj_info_ph: minibatch.test_adj,
-                                                                    # placeholders['features']: features
-                                                                    })
+                                                              size=FLAGS.validate_batch_size)
                 epoch_val_costs[-1] += val_cost
+                sess.run(up_adj_info.op, feed_dict={adj_info_ph: minibatch.adj})
+
             if shadow_mrr is None:
                 shadow_mrr = val_mrr
             else:
@@ -401,7 +402,13 @@ def train(train_data, test_data=None):
 def main(argv=None):
     print("Loading training data..")
     # train_data = load_data(FLAGS.train_prefix, load_walks=True)
-    train_data = load_data_from_graph(FLAGS.train_prefix, 'doc2vec.npy', 'random.walk', 'communities.csv')
+    train_data = load_data_from_graph(
+        graph_file=FLAGS.train_prefix + '/graph.gt',
+        features_file=FLAGS.train_prefix + '/doc2vec.npy',
+        labels_file=None,
+        map_file=FLAGS.train_prefix + '/id_map',
+        #walks_file=FLAGS.train_prefix + 'walks.tsv'
+    )
     print("Done loading training data..")
     train(train_data)
 

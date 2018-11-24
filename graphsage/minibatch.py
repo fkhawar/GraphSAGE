@@ -33,86 +33,113 @@ class EdgeMinibatchIterator(object):
                  **kwargs):
 
         self.G = G
-        self.nodes = G.nodes()
+
+        out_degrees = G.get_out_degrees(np.arange(0, G.num_vertices()))
+        in_degrees = G.get_in_degrees(np.arange(0, G.num_vertices()))
+
+        self.nodes = (set(np.arange(0, G.num_vertices())[out_degrees > 0]) &
+                      set(np.arange(0, G.num_vertices())[in_degrees > 0]))
+
+        out_degrees = G.get_out_degrees(self.nodes)
+        in_degrees = G.get_in_degrees(self.nodes)
+        self.deg = in_degrees + out_degrees
+
         self.id2idx = id2idx
         self.placeholders = placeholders
         self.batch_size = batch_size
         self.max_degree = max_degree
         self.batch_num = 0
 
-        self.nodes = np.random.permutation(G.nodes())
-        self.adj, self.deg = self.construct_adj()
         self.test_adj = self.construct_test_adj()
+        self.adj = self.construct_adj()
+
         if context_pairs is None:
-            edges = G.edges()
+            edges = G.get_edges()[:, :2]
         else:
             edges = context_pairs
-        self.train_edges = self.edges = np.random.permutation(edges)
-        if not n2v_retrain:
-            self.train_edges = self._remove_isolated(self.train_edges)
-            self.val_edges = [e for e in G.edges() if G[e[0]][e[1]]['train_removed']]
-        else:
-            if fixed_n2v:
-                self.train_edges = self.val_edges = self._n2v_prune(self.edges)
-            else:
-                self.train_edges = self.val_edges = self.edges
 
-        print(len([n for n in G.nodes() if not G.node[n]['test'] and not G.node[n]['val']]), 'train nodes')
-        print(len([n for n in G.nodes() if G.node[n]['test'] or G.node[n]['val']]), 'test nodes')
+        self.train_nodes, test_and_val = train_test_split(self.nodes, test_size=0.1)
+        self.val_nodes, self.test_nodes = train_test_split(test_and_val, test_size=0.5)
+
+        train_nodes_set = set(self.train_nodes)
+
+        self.edges = np.random.permutation(edges)
+        self.train_edges = [(src, dst) for (src, dst) in edges
+                            if src in train_nodes_set and dst in train_nodes_set]
+        self.val_edges = [(src, dst) for (src, dst) in edges
+                          if src not in train_nodes_set or dst not in train_nodes_set]
+        #if not n2v_retrain:
+            # self.train_edges = self._remove_isolated(self.train_edges)
+
+        # else:
+        #     if fixed_n2v:
+        #         self.train_edges = self.val_edges = self._n2v_prune(self.edges)
+        #     else:
+        #         self.train_edges = self.val_edges = self.edges
+
+        #print(len([n for n in G.nodes() if not G.node[n]['test'] and not G.node[n]['val']]), 'train nodes')
+        #print(len([n for n in G.nodes() if G.node[n]['test'] or G.node[n]['val']]), 'test nodes')
         self.val_set_size = len(self.val_edges)
 
-    def _n2v_prune(self, edges):
-        is_val = lambda n: self.G.node[n]["val"] or self.G.node[n]["test"]
-        return [e for e in edges if not is_val(e[1])]
+    # def _n2v_prune(self, edges):
+    #     is_val = lambda n: self.G.node[n]["val"] or self.G.node[n]["test"]
+    #     return [e for e in edges if not is_val(e[1])]
 
-    def _remove_isolated(self, edge_list):
-        new_edge_list = []
-        missing = 0
-        for n1, n2 in edge_list:
-            if not n1 in self.G.node or not n2 in self.G.node:
-                missing += 1
-                continue
-            if (self.deg[self.id2idx[n1]] == 0 or self.deg[self.id2idx[n2]] == 0) \
-                    and (not self.G.node[n1]['test'] or self.G.node[n1]['val']) \
-                    and (not self.G.node[n2]['test'] or self.G.node[n2]['val']):
-                continue
-            else:
-                new_edge_list.append((n1, n2))
-        print("Unexpected missing:", missing)
-        return new_edge_list
+    # def _remove_isolated(self, edge_list):
+    #     new_edge_list = []
+    #     missing = 0
+    #     for n1, n2 in edge_list:
+    #         if not n1 in self.G.node or not n2 in self.G.node:
+    #             missing += 1
+    #             continue
+    #         if (self.deg[self.id2idx[n1]] == 0 or self.deg[self.id2idx[n2]] == 0) \
+    #                 and (not self.G.node[n1]['test'] or self.G.node[n1]['val']) \
+    #                 and (not self.G.node[n2]['test'] or self.G.node[n2]['val']):
+    #             continue
+    #         else:
+    #             new_edge_list.append((n1, n2))
+    #     print("Unexpected missing:", missing)
+    #     return new_edge_list
 
     def construct_adj(self):
-        adj = len(self.id2idx) * np.ones((len(self.id2idx) + 1, self.max_degree))
-        deg = np.zeros((len(self.id2idx),))
+        adj = len(self.id2idx) * np.ones((len(self.id2idx) + 1, self.max_degree), dtype=np.uint32)
+        train_nodes = set([self.id2idx[v] for v in self.train_nodes if v in self.id2idx])
 
-        for nodeid in self.G.nodes():
-            if self.G.node[nodeid]['test'] or self.G.node[nodeid]['val']:
+        for node_id in train_nodes:
+            neighbors = [e for e in self.test_adj[node_id] if e in train_nodes]
+
+            if not len(neighbors):
                 continue
-            neighbors = np.array([self.id2idx[neighbor]
-                                  for neighbor in self.G.neighbors(nodeid)
-                                  if (not self.G[nodeid][neighbor]['train_removed'])])
-            deg[self.id2idx[nodeid]] = len(neighbors)
-            if len(neighbors) == 0:
-                continue
-            if len(neighbors) > self.max_degree:
-                neighbors = np.random.choice(neighbors, self.max_degree, replace=False)
-            elif len(neighbors) < self.max_degree:
-                neighbors = np.random.choice(neighbors, self.max_degree, replace=True)
-            adj[self.id2idx[nodeid], :] = neighbors
-        return adj, deg
+
+            adj[node_id, :] = np.random.choice(
+                neighbors, self.max_degree,
+                replace=len(neighbors) < self.max_degree)
+
+        return adj
 
     def construct_test_adj(self):
-        adj = len(self.id2idx) * np.ones((len(self.id2idx) + 1, self.max_degree))
-        for nodeid in self.G.nodes():
-            neighbors = np.array([self.id2idx[neighbor]
-                                  for neighbor in self.G.neighbors(nodeid)])
-            if len(neighbors) == 0:
+        if os.path.isfile(FLAGS.train_prefix + '/test-adj.npy'):
+            return np.load(FLAGS.train_prefix + '/test-adj.npy')
+
+        adj = len(self.id2idx) * np.ones((len(self.id2idx) + 1, self.max_degree), dtype=np.uint32)
+
+        for node_id in self.nodes:
+            try:
+                vertex = self.G.vertex(node_id)
+            except ValueError:
                 continue
-            if len(neighbors) > self.max_degree:
-                neighbors = np.random.choice(neighbors, self.max_degree, replace=False)
-            elif len(neighbors) < self.max_degree:
-                neighbors = np.random.choice(neighbors, self.max_degree, replace=True)
-            adj[self.id2idx[nodeid], :] = neighbors
+
+            neighbors = [int(e) for e in vertex.all_neighbors()]
+            neighbors = [self.id2idx[e] for e in neighbors if e in self.id2idx]
+
+            if not len(neighbors):
+                continue
+
+            adj[self.id2idx[node_id], :] = np.random.choice(
+                neighbors, self.max_degree,
+                replace=len(neighbors) < self.max_degree)
+
+        np.save(FLAGS.train_prefix + '/test-adj', adj)
         return adj
 
     def end(self):
@@ -181,114 +208,6 @@ class EdgeMinibatchIterator(object):
         self.train_edges = np.random.permutation(self.train_edges)
         self.nodes = np.random.permutation(self.nodes)
         self.batch_num = 0
-
-
-class LazyMinibatchIterator(EdgeMinibatchIterator):
-    def __init__(self, G, id2idx, clusters,
-                 placeholders, context_pairs=None,
-                 batch_size=100, max_degree=25, num_neg_samples=40,
-                 name='ruwiki', **kwargs):
-
-        self.G = G
-        self.id2idx = id2idx
-        self.placeholders = placeholders
-        self.batch_size = batch_size
-        self.max_degree = max_degree
-        self.neg_samples = num_neg_samples
-        self.batch_num = 0
-        self.name = '%s_%d' % (name, self.max_degree)
-
-        self.nodes, self.clusters = clusters
-
-        self.adj, self.deg = self.construct_adj()
-        self.test_adj = self.construct_test_adj()
-
-        self.train_edges = self.edges = context_pairs
-
-        self.G.set_vertex_filter(self.G.vertex_properties.test)
-        self.val_edges = [(e.source(), e.target()) for e in G.edges()]
-        self.G.clear_filters()
-
-    def construct_adj(self):
-        if os.path.isfile(self.name + '.adj.npy'):
-            adj = np.load(self.name + '.adj.npy')
-            deg = np.load(self.name + '.deg.npy')
-            return adj, deg
-
-        adj = np.zeros((len(self.id2idx) + 1, self.max_degree), dtype=np.int32)
-        deg = np.zeros((len(self.id2idx),), dtype=np.uint8)
-
-        self.G.set_vertex_filter(self.G.vertex_properties.test, inverted=True)
-        for v in self.nodes:
-            try:
-                vertex = self.G.vertex(v)
-            except ValueError:
-                continue
-
-            neighbors = [int(e) for e in vertex.all_neighbors()]
-            deg[self.id2idx[v]] = len(neighbors)
-            adj[self.id2idx[v], :] = np.random.choice(neighbors, self.max_degree,
-                                                      replace=len(neighbors) < self.max_degree)
-
-        self.G.clear_filters()
-
-        np.save(self.name + '.adj.npy', adj)
-        np.save(self.name + '.deg.npy', deg)
-
-        return adj, deg
-
-    def construct_test_adj(self):
-        if os.path.isfile(self.name + '.test-adj.npy'):
-            return np.load(self.name + '.test-adj.npy')
-
-        adj = np.zeros((len(self.id2idx) + 1, self.max_degree), dtype=np.int32)
-
-        for v in self.nodes:
-            try:
-                vertex = self.G.vertex(v)
-            except ValueError:
-                continue
-
-            neighbors = [int(e) for e in vertex.all_neighbors()]
-            adj[self.id2idx[v], :] = np.random.choice(neighbors, self.max_degree,
-                                                      replace=len(neighbors) < self.max_degree)
-
-        np.save(self.name + '.test-adj.npy', adj)
-        return adj
-
-    def batch_feed_dict(self, batch_edges, neg_samples):
-        dct = super(LazyMinibatchIterator, self).batch_feed_dict(batch_edges)
-        dct[self.placeholders['neg_samples']] = neg_samples
-        return dct
-
-    def get_negative_samples(self, batch_edges):
-        node_ids = np.isin(self.nodes, [n for e in batch_edges for n in e])
-        batch_clusters = self.clusters[node_ids]
-        other_clusters = np.isin(self.clusters, batch_clusters, invert=True)
-
-        return np.random.choice(self.nodes[other_clusters], self.neg_samples)
-
-    def next_minibatch_feed_dict(self):
-        self.batch_num += 1
-        batch_edges = list(itertools.islice(self.train_edges, 0, self.batch_size))
-
-        return self.batch_feed_dict(batch_edges, self.get_negative_samples(batch_edges))
-
-    def val_feed_dict(self, size=None):
-        edge_list = self.val_edges
-
-        ind = np.random.permutation(len(edge_list))
-        val_edges = [edge_list[i] for i in ind[:min(size, len(ind))]]
-        val_edges = [(int(src), int(dst)) for src, dst in val_edges]
-
-        return self.batch_feed_dict(val_edges, self.get_negative_samples(val_edges))
-
-    def shuffle(self):
-        self.edges._open()
-        self.batch_num = 0
-
-    def label_val(self):
-        raise NotImplemented
 
 
 class NodeMinibatchIterator(object):

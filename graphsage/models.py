@@ -224,7 +224,7 @@ class SampleAndAggregate(GeneralizedModel):
         # get info from placeholders...
         self.inputs1 = placeholders["batch1"]
         self.inputs2 = placeholders["batch2"]
-        self.neg_samples = placeholders['neg_samples']
+        # self.neg_samples = placeholders['neg_samples']
         self.model_size = model_size
         self.adj_info = adj
         if identity_dim > 0:
@@ -334,17 +334,17 @@ class SampleAndAggregate(GeneralizedModel):
         return hidden[0], aggregators
 
     def _build(self):
-        # labels = tf.reshape(
-        #         tf.cast(self.placeholders['batch2'], dtype=tf.int64),
-        #         [self.batch_size, 1])
-        # self.neg_samples, _, _ = (tf.nn.fixed_unigram_candidate_sampler(
-        #     true_classes=labels,
-        #     num_true=1,
-        #     num_sampled=FLAGS.neg_sample_size,
-        #     unique=False,
-        #     range_max=len(self.degrees),
-        #     distortion=0.75,
-        #     unigrams=self.degrees.tolist()))
+        labels = tf.reshape(
+                tf.cast(self.placeholders['batch2'], dtype=tf.int64),
+                [self.batch_size, 1])
+        self.neg_samples, _, _ = (tf.nn.fixed_unigram_candidate_sampler(
+            true_classes=labels,
+            num_true=1,
+            num_sampled=FLAGS.neg_sample_size,
+            unique=False,
+            range_max=len(self.degrees),
+            distortion=0.75,
+            unigrams=self.degrees.tolist()))
 
         # self.inputs1 = tf.Print(self.inputs1, [self.inputs1, self.inputs2], message='inputs:', summarize=1000)
         # self.neg_samples = tf.Print(self.neg_samples, [self.inputs1, self.inputs2, self.neg_samples], message='neg_samples', summarize=1000)
