@@ -145,9 +145,9 @@ def train(train_data, test_data=None):
     id_map = train_data[2]
     walks = train_data[-1]
 
-    if not features_np is None:
+    if features_np is not None:
         # pad with dummy zero vector
-        features = np.vstack([features_np, np.zeros((features_np.shape[1],))])
+        features_np = np.vstack([features_np, np.zeros((features_np.shape[1],))])
 
     context_pairs = train_data[3] if FLAGS.random_context else None
     placeholders = construct_placeholders()

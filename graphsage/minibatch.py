@@ -56,7 +56,7 @@ class EdgeMinibatchIterator(object):
             edges = context_pairs
 
         self.train_nodes, test_and_val = train_test_split(self.nodes, test_size=0.1)
-        self.val_nodes, self.test_nodes = train_test_split(test_and_val, test_size=0.5)
+        #self.val_nodes, self.test_nodes = train_test_split(test_and_val, test_size=0.5)
 
         train_nodes_set = set(self.train_nodes)
 
@@ -65,6 +65,9 @@ class EdgeMinibatchIterator(object):
                             if src in train_nodes_set and dst in train_nodes_set]
         self.val_edges = [(src, dst) for (src, dst) in edges
                           if src not in train_nodes_set or dst not in train_nodes_set]
+
+        print("Train nodes:", len(self.train_nodes), "Train edges:", len(self.train_edges),
+              "Val edges:", len(self.val_edges))
 
         self.test_adj = self.construct_test_adj()
         self.adj = self.construct_adj()
