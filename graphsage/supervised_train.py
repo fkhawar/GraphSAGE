@@ -83,10 +83,11 @@ def evaluate(sess, model, minibatch_iter, size=None):
 
 def log_dir():
     log_dir = FLAGS.base_log_dir + "/sup-" + FLAGS.train_prefix.split("/")[-1]
-    log_dir += "/{model:s}_{model_size:s}_{dropout:0.3f}_{lr:0.4f}/".format(
+    log_dir += "/{model:s}_{model_size:s}_{dropout:0.3f}_{weight:0.9f}_{lr:0.4f}/".format(
         model=FLAGS.model,
         model_size=FLAGS.model_size,
         dropout=FLAGS.dropout,
+        weight=FLAGS.weight_decay,
         lr=FLAGS.learning_rate)
     if not os.path.exists(log_dir):
         os.makedirs(log_dir)
