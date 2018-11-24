@@ -373,8 +373,8 @@ def train(train_data, test_data=None):
     val_cost, val_f1_mic, val_f1_mac, duration = incremental_evaluate(sess, model, minibatch, FLAGS.batch_size,
                                                                       test=True)
     with open(log_dir() + "test_stats.txt", "w") as fp:
-        fp.write("loss={:.5f} f1_micro={:.5f} f1_macro={:.5f}".
-                 format(val_cost, val_f1_mic, val_f1_mac))
+        fp.write("loss={:.5f} f1_micro={:.5f} f1_macro={:.5f} best={:.5f}".
+                 format(val_cost, val_f1_mic, val_f1_mac, best))
 
 
 def main(argv=None):
