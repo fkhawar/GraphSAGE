@@ -236,14 +236,14 @@ class SampleAndAggregate(GeneralizedModel):
                 raise Exception("Must have a positive value for identity feature dimension if no input features given.")
             self.features = self.embeds
         else:
-            self.features = tf.Variable(placeholders['features'], trainable=False)
+            self.features = features
 
             if not self.embeds is None:
                 self.features = tf.concat([self.embeds, self.features], axis=1)
         self.degrees = degrees
         self.concat = concat
 
-        self.dims = [(0 if features is None else features.shape[1]) + identity_dim]
+        self.dims = [(0 if features is None else features.shape[1].value) + identity_dim]
         self.dims.extend([layer_infos[i].output_dim for i in range(len(layer_infos))])
         self.batch_size = placeholders["batch_size"]
         self.placeholders = placeholders
