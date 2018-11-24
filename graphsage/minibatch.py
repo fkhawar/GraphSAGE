@@ -50,9 +50,6 @@ class EdgeMinibatchIterator(object):
         self.max_degree = max_degree
         self.batch_num = 0
 
-        self.test_adj = self.construct_test_adj()
-        self.adj = self.construct_adj()
-
         if context_pairs is None:
             edges = G.get_edges()[:, :2]
         else:
@@ -68,6 +65,9 @@ class EdgeMinibatchIterator(object):
                             if src in train_nodes_set and dst in train_nodes_set]
         self.val_edges = [(src, dst) for (src, dst) in edges
                           if src not in train_nodes_set or dst not in train_nodes_set]
+
+        self.test_adj = self.construct_test_adj()
+        self.adj = self.construct_adj()
         # if not n2v_retrain:
         # self.train_edges = self._remove_isolated(self.train_edges)
 
