@@ -3,6 +3,7 @@ from __future__ import print_function
 
 import os
 import time
+import shutil
 import tensorflow as tf
 import numpy as np
 from sklearn import metrics
@@ -303,8 +304,10 @@ def train(train_data, test_data=None):
 
                 if val_f1_mic > best:
                     print("Saving best model")
+                    shutil.rmtree(log_dir() + 'saved_model_best', ignore_errors=True)
+
                     tf.saved_model.simple_save(
-                        sess, log_dir() + '/saved_model_best',
+                        sess, log_dir() + 'saved_model_best',
                         {'nodes': placeholders['batch'],
                          'batch_size': placeholders['batch_size'],
                          # 'adjacency': adj_info_ph,
