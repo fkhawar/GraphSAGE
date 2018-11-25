@@ -55,16 +55,15 @@ class EdgeMinibatchIterator(object):
         else:
             edges = context_pairs
 
-        self.train_nodes, test_and_val = train_test_split(self.nodes, test_size=0.2)
-        #self.val_nodes, self.test_nodes = train_test_split(test_and_val, test_size=0.5)
+        self.train_nodes, test_and_val = train_test_split(
+            np.array(list(self.id2idx.keys())), test_size=0.2)
+        # self.val_nodes, self.test_nodes = train_test_split(test_and_val, test_size=0.5)
 
-        train_nodes_set = set(self.train_nodes)
+        #train_nodes_set = set(self.train_nodes)
 
-        self.edges = np.random.permutation(edges)
-        self.train_edges = [(src, dst) for (src, dst) in edges
-                            if src in train_nodes_set and dst in train_nodes_set]
-        self.val_edges = [(src, dst) for (src, dst) in edges
-                          if src not in train_nodes_set or dst not in train_nodes_set]
+        edges = np.random.permutation(edges)
+        self.train_edges = edges[np.isin(edges[:, 0], self.train_nodes) & np.isin(edges[:, 1], self.train_nodes)]
+        self.val_edges = edges[np.isin(edges[:, 0], test_and_val) & np.isin(edges[:, 1], test_and_val)]
 
         print("Train nodes:", len(self.train_nodes), "Train edges:", len(self.train_edges),
               "Val edges:", len(self.val_edges))

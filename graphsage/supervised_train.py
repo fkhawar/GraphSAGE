@@ -133,8 +133,8 @@ def train(train_data, test_data=None):
     G = train_data[0]
     features_np = train_data[1]
     id_map = train_data[2]
+    train_nodes = train_data[3]
     class_map = train_data[4]
-    train_nodes = train_data[5]
 
     num_classes = class_map.shape[1]
 

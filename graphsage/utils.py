@@ -144,5 +144,5 @@ def load_data_from_graph(graph_file, features_file, labels_file, map_file, walks
 
     print('Features loaded')
 
-    return g, features, id_map, None, labels, walks
+    return g, features, id_map, nodes, labels, walks
     #return g, features, id_map(), random_walks(walks_file), clusters, None
