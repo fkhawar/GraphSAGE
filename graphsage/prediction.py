@@ -102,11 +102,11 @@ class BipartiteEdgePredLayer(Layer):
     def _xent_loss(self, inputs1, inputs2, neg_samples, hard_neg_samples=None):
         aff = self.affinity(inputs1, inputs2)
         neg_aff = self.neg_cost(inputs1, neg_samples, hard_neg_samples)
-        true_xent = tf.nn.sigmoid_cross_entropy_with_logits(
+        self.true_loss = tf.nn.sigmoid_cross_entropy_with_logits(
                 labels=tf.ones_like(aff), logits=aff)
-        negative_xent = tf.nn.sigmoid_cross_entropy_with_logits(
+        self.negative_loss = tf.nn.sigmoid_cross_entropy_with_logits(
                 labels=tf.zeros_like(neg_aff), logits=neg_aff)
-        loss = tf.reduce_sum(true_xent) + self.neg_sample_weights * tf.reduce_sum(negative_xent)
+        loss = tf.reduce_sum(self.true_loss) + self.neg_sample_weights * tf.reduce_sum(self.negative_loss)
         return loss
 
     def _skipgram_loss(self, inputs1, inputs2, neg_samples, hard_neg_samples=None):

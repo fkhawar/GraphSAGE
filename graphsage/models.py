@@ -393,7 +393,9 @@ class SampleAndAggregate(GeneralizedModel):
             for var in aggregator.vars.values():
                 self.loss += FLAGS.weight_decay * tf.nn.l2_loss(var)
 
-        self.loss += self.link_pred_layer.loss(self.outputs1, self.outputs2, self.neg_outputs) 
+        self.loss += self.link_pred_layer.loss(self.outputs1, self.outputs2, self.neg_outputs)
+        self.true_loss = self.link_pred_layer.true_loss
+        self.negative_loss = self.link_pred_layer.negative_loss
         tf.summary.scalar('loss', self.loss)
 
     def _accuracy(self):

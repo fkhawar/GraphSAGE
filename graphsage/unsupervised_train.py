@@ -292,8 +292,9 @@ def train(train_data, test_data=None):
             # Training step
             outs = sess.run([
                 merged, model.opt_op, model.loss, model.ranks, model.aff_all,
-                model.mrr, model.outputs1], feed_dict=feed_dict)
+                model.mrr, model.outputs1, model.neg_samples, model.true_loss, model.negative_loss], feed_dict=feed_dict)
 
+            print('Debug: neg-sample, true loss, negative loss', outs[-3:])
             train_cost = outs[2]
             train_mrr = outs[5]
             if train_shadow_mrr is None:
