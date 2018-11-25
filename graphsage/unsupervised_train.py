@@ -313,8 +313,8 @@ def train(train_data, test_data=None):
                                                [G.vertex(reverse_id_map[n]) for n in neg], directed=False)
                     for v in inputs1
                 ])
-                
-                print('Debug: true loss, negative loss', np.sum(true_loss), np.sum(negative_loss), distances)
+
+                print('Debug: true loss, negative loss', np.mean(true_loss), np.mean(negative_loss), distances)
 
                 sess.run(up_adj_info.op, feed_dict={adj_info_ph: minibatch.test_adj})
                 val_cost, ranks, val_mrr, duration = evaluate(sess, model, minibatch,

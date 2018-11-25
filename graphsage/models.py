@@ -368,7 +368,7 @@ class SampleAndAggregate(GeneralizedModel):
         dim_mult = 2 if self.concat else 1
         self.link_pred_layer = BipartiteEdgePredLayer(dim_mult*self.dims[-1],
                 dim_mult*self.dims[-1], self.placeholders, act=tf.nn.sigmoid, 
-                bilinear_weights=False,
+                bilinear_weights=False, neg_sample_weights=1,
                 name='edge_predict')
 
         self.outputs1 = tf.nn.l2_normalize(self.outputs1, 1)
