@@ -34,7 +34,7 @@ flags.DEFINE_string('train_prefix', '', 'name of the object file that stores the
 flags.DEFINE_integer('epochs', 1, 'number of epochs to train.')
 flags.DEFINE_float('dropout', 0.0, 'dropout rate (1 - keep probability).')
 flags.DEFINE_float('weight_decay', 0.0, 'weight for l2 loss on embedding matrix.')
-flags.DEFINE_integer('max_degree', 100, 'maximum node degree.')
+flags.DEFINE_integer('max_degree', 128, 'maximum node degree.')
 flags.DEFINE_integer('samples_1', 25, 'number of samples in layer 1')
 flags.DEFINE_integer('samples_2', 10, 'number of users samples in layer 2')
 flags.DEFINE_integer('dim_1', 128, 'Size of output dim (final is 2x this, if using concat)')
