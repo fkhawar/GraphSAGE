@@ -11,6 +11,8 @@ from graphsage.minibatch import EdgeMinibatchIterator
 from graphsage.neigh_samplers import UniformNeighborSampler
 from graphsage.utils import load_data, load_data_from_graph
 
+from graph_tool import topology
+
 os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 
 # Set random seed
@@ -41,7 +43,7 @@ flags.DEFINE_integer('dim_1', 128, 'Size of output dim (final is 2x this, if usi
 flags.DEFINE_integer('dim_2', 128, 'Size of output dim (final is 2x this, if using concat)')
 flags.DEFINE_boolean('random_context', False, 'Whether to use random context or direct edges')
 flags.DEFINE_integer('neg_sample_size', 20, 'number of negative samples')
-flags.DEFINE_integer('batch_size', 256, 'minibatch size.')
+flags.DEFINE_integer('batch_size', 64, 'minibatch size.')
 flags.DEFINE_integer('n2v_test_epochs', 1, 'Number of new SGD epochs for n2v.')
 flags.DEFINE_integer('identity_dim', 0,
                      'Set to positive value to use identity embedding features of that dimension. Default 0.')
@@ -144,6 +146,7 @@ def train(train_data, test_data=None):
     features_np = train_data[1]
     id_map = train_data[2]
     walks = train_data[-1]
+    reverse_id_map = {idx: v for v, idx in id_map.items()}
 
     if features_np is not None:
         # pad with dummy zero vector
@@ -292,9 +295,17 @@ def train(train_data, test_data=None):
             # Training step
             outs = sess.run([
                 merged, model.opt_op, model.loss, model.ranks, model.aff_all,
-                model.mrr, model.outputs1, model.neg_samples, model.true_loss, model.negative_loss], feed_dict=feed_dict)
+                model.mrr, model.outputs1,
+                model.inputs1, model.neg_samples, model.true_loss, model.negative_loss], feed_dict=feed_dict)
 
-            print('Debug: neg-sample, true loss, negative loss', outs[-3:])
+            inputs1, neg, true_loss, negative_loss = outs[-4:]
+            distances = np.vstack([
+                topology.shortest_distance(G, G.vertex(reverse_id_map[v]),
+                                           [G.vertex(reverse_id_map[n]) for n in neg], directed=False)
+                for v in inputs1
+            ])
+            print('Debug: true loss, negative loss', true_loss, negative_loss, distances)
+
             train_cost = outs[2]
             train_mrr = outs[5]
             if train_shadow_mrr is None:
