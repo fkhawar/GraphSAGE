@@ -298,14 +298,6 @@ def train(train_data, test_data=None):
                 model.mrr, model.outputs1,
                 model.inputs1, model.neg_samples, model.true_loss, model.negative_loss], feed_dict=feed_dict)
 
-            inputs1, neg, true_loss, negative_loss = outs[-4:]
-            distances = np.vstack([
-                topology.shortest_distance(G, G.vertex(reverse_id_map[v]),
-                                           [G.vertex(reverse_id_map[n]) for n in neg], directed=False)
-                for v in inputs1
-            ])
-            print('Debug: true loss, negative loss', true_loss, negative_loss, distances)
-
             train_cost = outs[2]
             train_mrr = outs[5]
             if train_shadow_mrr is None:
@@ -315,6 +307,15 @@ def train(train_data, test_data=None):
 
             if iter % FLAGS.validate_iter == 0:
                 # Validation
+                inputs1, neg, true_loss, negative_loss = outs[-4:]
+                distances = np.vstack([
+                    topology.shortest_distance(G, G.vertex(reverse_id_map[v]),
+                                               [G.vertex(reverse_id_map[n]) for n in neg], directed=False)
+                    for v in inputs1
+                ])
+                
+                print('Debug: true loss, negative loss', np.sum(true_loss), np.sum(negative_loss), distances)
+
                 sess.run(up_adj_info.op, feed_dict={adj_info_ph: minibatch.test_adj})
                 val_cost, ranks, val_mrr, duration = evaluate(sess, model, minibatch,
                                                               size=FLAGS.validate_batch_size)
