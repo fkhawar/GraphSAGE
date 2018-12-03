@@ -86,7 +86,7 @@ def load_data(prefix, normalize=True, load_walks=False):
     return G, feats, id_map, walks, class_map
 
 
-def load_data_from_graph(graph_file, features_file, labels_file, map_file, walks_file=None):
+def load_data_from_graph(graph_file, features_file, labels_file, map_file, walks_file=None, walks_per_user=20):
     g = graph_tool.load_graph(graph_file)
 
     # out_degrees = g.get_out_degrees(np.arange(0, g.num_vertices()))
@@ -105,7 +105,7 @@ def load_data_from_graph(graph_file, features_file, labels_file, map_file, walks
     labels = []
     walks = []
 
-    if walks_file:
+    if walks_file and walks_per_user:
         with open(walks_file, 'r') as users:
             for user in users:
                 try:
@@ -114,9 +114,13 @@ def load_data_from_graph(graph_file, features_file, labels_file, map_file, walks
                     continue
 
                 pages = [p for p in pages if p in id_map]
+                pairs = np.array([(x, y) for x, y in itertools.permutations(pages, 2) if x < y])
 
-                walks.extend(np.random.choice(
-                    [(x, y) for x, y in itertools.permutations(pages, 2) if x < y], 20))
+                if len(pairs) < walks_per_user:
+                    walks.extend(pairs)
+                else:
+                    idxs = np.random.choice(np.arange(len(pairs)), walks_per_user)
+                    walks.extend(pairs[idxs])
 
     print("Walk file", len(walks))
 
