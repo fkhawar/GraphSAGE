@@ -42,7 +42,7 @@ flags.DEFINE_integer('samples_2', 25, 'number of users samples in layer 2')
 flags.DEFINE_integer('dim_1', 64, 'Size of output dim (final is 2x this, if using concat)')
 flags.DEFINE_integer('dim_2', 64, 'Size of output dim (final is 2x this, if using concat)')
 flags.DEFINE_boolean('random_context', False, 'Whether to use random context or direct edges')
-flags.DEFINE_integer('neg_sample_size', 40, 'number of negative samples')
+flags.DEFINE_integer('neg_sample_size', 80, 'number of negative samples')
 flags.DEFINE_integer('batch_size', 512, 'minibatch size.')
 flags.DEFINE_integer('n2v_test_epochs', 1, 'Number of new SGD epochs for n2v.')
 flags.DEFINE_integer('identity_dim', 0,
@@ -282,7 +282,7 @@ def train(train_data, test_data=None):
     up_features = tf.assign(features, features_ph, name='up_features')
 
     for epoch in range(FLAGS.epochs):
-        # minibatch.shuffle()
+        minibatch.shuffle()
 
         iter = 0
         print('Epoch: %04d' % (epoch + 1))
