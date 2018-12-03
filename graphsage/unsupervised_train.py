@@ -28,22 +28,22 @@ tf.app.flags.DEFINE_boolean('log_device_placement', False,
                             """Whether to log device placement.""")
 # core params..
 flags.DEFINE_string('model', 'graphsage', 'model names. See README for possible values.')
-flags.DEFINE_float('learning_rate', 0.00001, 'initial learning rate.')
+flags.DEFINE_float('learning_rate', 0.001, 'initial learning rate.')
 flags.DEFINE_string("model_size", "small", "Can be big or small; model specific def'ns")
 flags.DEFINE_string('train_prefix', '', 'name of the object file that stores the training data. must be specified.')
 
 # left to default values in main experiments 
-flags.DEFINE_integer('epochs', 1, 'number of epochs to train.')
+flags.DEFINE_integer('epochs', 3, 'number of epochs to train.')
 flags.DEFINE_float('dropout', 0.0, 'dropout rate (1 - keep probability).')
 flags.DEFINE_float('weight_decay', 0.0, 'weight for l2 loss on embedding matrix.')
 flags.DEFINE_integer('max_degree', 128, 'maximum node degree.')
 flags.DEFINE_integer('samples_1', 25, 'number of samples in layer 1')
-flags.DEFINE_integer('samples_2', 10, 'number of users samples in layer 2')
-flags.DEFINE_integer('dim_1', 128, 'Size of output dim (final is 2x this, if using concat)')
-flags.DEFINE_integer('dim_2', 128, 'Size of output dim (final is 2x this, if using concat)')
+flags.DEFINE_integer('samples_2', 25, 'number of users samples in layer 2')
+flags.DEFINE_integer('dim_1', 64, 'Size of output dim (final is 2x this, if using concat)')
+flags.DEFINE_integer('dim_2', 64, 'Size of output dim (final is 2x this, if using concat)')
 flags.DEFINE_boolean('random_context', False, 'Whether to use random context or direct edges')
-flags.DEFINE_integer('neg_sample_size', 20, 'number of negative samples')
-flags.DEFINE_integer('batch_size', 64, 'minibatch size.')
+flags.DEFINE_integer('neg_sample_size', 40, 'number of negative samples')
+flags.DEFINE_integer('batch_size', 512, 'minibatch size.')
 flags.DEFINE_integer('n2v_test_epochs', 1, 'Number of new SGD epochs for n2v.')
 flags.DEFINE_integer('identity_dim', 0,
                      'Set to positive value to use identity embedding features of that dimension. Default 0.')
@@ -51,7 +51,7 @@ flags.DEFINE_integer('identity_dim', 0,
 # logging, saving, validation settings etc.
 flags.DEFINE_boolean('save_embeddings', True, 'whether to save embeddings for all nodes after training')
 flags.DEFINE_string('base_log_dir', '.', 'base directory for logging and saving embeddings')
-flags.DEFINE_integer('validate_iter', 5000, "how often to run a validation minibatch.")
+flags.DEFINE_integer('validate_iter', 500, "how often to run a validation minibatch.")
 flags.DEFINE_integer('validate_batch_size', 2048, "how many nodes per validation sample.")
 flags.DEFINE_integer('gpu', 1, "which gpu to use.")
 flags.DEFINE_integer('print_every', 50, "How often to print training info.")
@@ -63,7 +63,7 @@ GPU_MEM_FRACTION = 0.8
 
 
 def log_dir():
-    log_dir = FLAGS.base_log_dir + "/unsup-" + FLAGS.train_prefix.split("/")[-2]
+    log_dir = FLAGS.base_log_dir + "/unsup-" + FLAGS.train_prefix.split("/")[-1]
     log_dir += "/{model:s}_{model_size:s}_{lr:0.6f}/".format(
         model=FLAGS.model,
         model_size=FLAGS.model_size,
@@ -152,16 +152,16 @@ def train(train_data, test_data=None):
         # pad with dummy zero vector
         features_np = np.vstack([features_np, np.zeros((features_np.shape[1],))])
 
-    context_pairs = train_data[3] if FLAGS.random_context else None
     placeholders = construct_placeholders()
     minibatch = EdgeMinibatchIterator(
         G,
         id_map,
         placeholders,
+        context_pairs=walks,
         batch_size=FLAGS.batch_size,
         max_degree=FLAGS.max_degree,
-        num_neg_samples=FLAGS.neg_sample_size,
-        context_pairs=context_pairs)
+        num_neg_samples=FLAGS.neg_sample_size
+    )
 
     adj_info_ph = tf.placeholder(tf.int32, shape=minibatch.adj.shape)
     adj_info = tf.Variable(adj_info_ph, trainable=False, name="adj_info")
@@ -296,7 +296,7 @@ def train(train_data, test_data=None):
             outs = sess.run([
                 merged, model.opt_op, model.loss, model.ranks, model.aff_all,
                 model.mrr, model.outputs1,
-                model.inputs1, model.neg_samples, model.true_loss, model.negative_loss], feed_dict=feed_dict)
+                model.inputs1], feed_dict=feed_dict)
 
             train_cost = outs[2]
             train_mrr = outs[5]
@@ -307,14 +307,14 @@ def train(train_data, test_data=None):
 
             if iter % FLAGS.validate_iter == 0:
                 # Validation
-                inputs1, neg, true_loss, negative_loss = outs[-4:]
-                distances = np.vstack([
-                    topology.shortest_distance(G, G.vertex(reverse_id_map[v]),
-                                               [G.vertex(reverse_id_map[n]) for n in neg], directed=False)
-                    for v in inputs1
-                ])
-
-                print('Debug: true loss, negative loss', np.mean(true_loss), np.mean(negative_loss), distances)
+                # inputs1, neg, true_loss, negative_loss = outs[-4:]
+                # distances = np.vstack([
+                #     topology.shortest_distance(G, G.vertex(reverse_id_map[v]),
+                #                                [G.vertex(reverse_id_map[n]) for n in neg], directed=False)
+                #     for v in inputs1
+                # ])
+                #
+                # print('Debug: true loss, negative loss', np.mean(true_loss), np.mean(negative_loss), distances)
 
                 sess.run(up_adj_info.op, feed_dict={adj_info_ph: minibatch.test_adj})
                 val_cost, ranks, val_mrr, duration = evaluate(sess, model, minibatch,
@@ -420,7 +420,7 @@ def main(argv=None):
         features_file=FLAGS.train_prefix + '/doc2vec.npy',
         labels_file=None,
         map_file=FLAGS.train_prefix + '/id_map',
-        #walks_file=FLAGS.train_prefix + 'walks.tsv'
+        walks_file=FLAGS.train_prefix + '/revisions.json'
     )
     print("Done loading training data..")
     train(train_data)

@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import numpy as np
+import itertools
 from scipy.sparse import csr_matrix, save_npz, load_npz
 from sklearn.preprocessing import LabelEncoder
 import json
@@ -100,9 +101,24 @@ def load_data_from_graph(graph_file, features_file, labels_file, map_file, walks
 
     print("IdMap loaded", len(id_map))
 
-    walks = [map(int, line.strip().split()) for line in open(walks_file)] if walks_file else []
     nodes = []
     labels = []
+    walks = []
+
+    if walks_file:
+        with open(walks_file, 'r') as users:
+            for user in users:
+                try:
+                    pages = json.loads(user)['pageIds']
+                except (ValueError, KeyError):
+                    continue
+
+                pages = [p for p in pages if p in id_map]
+
+                walks.extend(np.random.choice(
+                    [(x, y) for x, y in itertools.permutations(pages, 2) if x < y], 20))
+
+    print("Walk file", len(walks))
 
     if labels_file:
         with open(labels_file, 'r') as lines:

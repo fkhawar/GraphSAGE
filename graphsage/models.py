@@ -343,8 +343,8 @@ class SampleAndAggregate(GeneralizedModel):
             num_sampled=FLAGS.neg_sample_size,
             unique=False,
             range_max=len(self.degrees),
-            distortion=0.75,
-            unigrams=self.degrees.tolist()))
+            distortion=0.,
+            unigrams=(1 / self.degrees).tolist()))
 
         # self.inputs1 = tf.Print(self.inputs1, [self.inputs1, self.inputs2], message='inputs:', summarize=1000)
         # self.neg_samples = tf.Print(self.neg_samples, [self.inputs1, self.inputs2, self.neg_samples], message='neg_samples', summarize=1000)
@@ -394,8 +394,8 @@ class SampleAndAggregate(GeneralizedModel):
                 self.loss += FLAGS.weight_decay * tf.nn.l2_loss(var)
 
         self.loss += self.link_pred_layer.loss(self.outputs1, self.outputs2, self.neg_outputs)
-        self.true_loss = self.link_pred_layer.true_loss
-        self.negative_loss = self.link_pred_layer.negative_loss
+        # self.true_loss = self.link_pred_layer.true_loss
+        # self.negative_loss = self.link_pred_layer.negative_loss
         tf.summary.scalar('loss', self.loss)
 
     def _accuracy(self):

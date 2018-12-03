@@ -53,10 +53,10 @@ class EdgeMinibatchIterator(object):
         if context_pairs is None:
             edges = G.get_edges()[:, :2]
         else:
-            edges = context_pairs
+            edges = np.array(context_pairs)
 
         self.train_nodes, test_and_val = train_test_split(
-            np.array(list(self.id2idx.keys())), test_size=0.2)
+            np.array(list(self.id2idx.keys())), test_size=0.1)
         # self.val_nodes, self.test_nodes = train_test_split(test_and_val, test_size=0.5)
 
         #train_nodes_set = set(self.train_nodes)
