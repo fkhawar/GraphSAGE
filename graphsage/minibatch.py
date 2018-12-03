@@ -50,7 +50,7 @@ class EdgeMinibatchIterator(object):
         self.max_degree = max_degree
         self.batch_num = 0
 
-        if context_pairs is None:
+        if not context_pairs:
             edges = G.get_edges()[:, :2]
         else:
             edges = np.array(context_pairs)

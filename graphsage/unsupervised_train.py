@@ -56,6 +56,7 @@ flags.DEFINE_integer('validate_batch_size', 2048, "how many nodes per validation
 flags.DEFINE_integer('gpu', 1, "which gpu to use.")
 flags.DEFINE_integer('print_every', 50, "How often to print training info.")
 flags.DEFINE_integer('max_total_steps', 10 ** 10, "Maximum total number of iterations")
+flags.DEFINE_integer('walks_per_user', 20, "Walks per user")
 
 os.environ["CUDA_VISIBLE_DEVICES"] = str(FLAGS.gpu)
 
@@ -420,7 +421,8 @@ def main(argv=None):
         features_file=FLAGS.train_prefix + '/doc2vec.npy',
         labels_file=None,
         map_file=FLAGS.train_prefix + '/id_map',
-        walks_file=FLAGS.train_prefix + '/revisions.json'
+        walks_file=FLAGS.train_prefix + '/revisions.json',
+        walks_per_user=FLAGS.walks_per_user
     )
     print("Done loading training data..")
     train(train_data)
