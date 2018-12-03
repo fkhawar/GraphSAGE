@@ -11,7 +11,7 @@ FLAGS = flags.FLAGS
 
 class BipartiteEdgePredLayer(Layer):
     def __init__(self, input_dim1, input_dim2, placeholders, dropout=False, act=tf.nn.sigmoid,
-            loss_fn='xent', neg_sample_weights=1.0,
+            loss_fn='hinge', neg_sample_weights=1.0,
             bias=False, bilinear_weights=False, **kwargs):
         """
         Basic class that applies skip-gram-like loss
