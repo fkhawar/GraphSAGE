@@ -251,6 +251,15 @@ class SampleAndAggregate(GeneralizedModel):
 
         self.optimizer = tf.train.AdamOptimizer(learning_rate=FLAGS.learning_rate)
 
+        dim_mult = 2 if self.concat else 1
+
+        self.G1 = layers.Dense(
+            dim_mult * self.dims[-1], dim_mult * self.dims[-1],
+            dropout=self.placeholders['dropout'], act=tf.nn.relu)
+        self.G2 = layers.Dense(
+            dim_mult * self.dims[-1], dim_mult * self.dims[-1],
+            dropout=self.placeholders['dropout'], act=lambda x: x, bias=False)
+
         self.build()
 
     def sample(self, inputs, layer_infos, batch_size=None):
@@ -370,6 +379,10 @@ class SampleAndAggregate(GeneralizedModel):
                 dim_mult*self.dims[-1], self.placeholders, act=tf.nn.sigmoid, 
                 bilinear_weights=False, neg_sample_weights=1,
                 name='edge_predict')
+
+        self.outputs1 = self.G2(self.G1(self.outputs1))
+        self.outputs2 = self.G2(self.G1(self.outputs2))
+        self.neg_outputs = self.G2(self.G1(self.neg_outputs))
 
         self.outputs1 = tf.nn.l2_normalize(self.outputs1, 1)
         self.outputs2 = tf.nn.l2_normalize(self.outputs2, 1)
