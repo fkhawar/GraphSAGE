@@ -34,11 +34,7 @@ class EdgeMinibatchIterator(object):
 
         self.G = G
 
-        out_degrees = G.get_out_degrees(np.arange(0, G.num_vertices()))
-        in_degrees = G.get_in_degrees(np.arange(0, G.num_vertices()))
-
-        self.nodes = list(set(np.arange(0, G.num_vertices())[out_degrees > 0]) &
-                          set(np.arange(0, G.num_vertices())[in_degrees > 0]))
+        self.nodes = id2idx.keys()
 
         out_degrees = G.get_out_degrees(self.nodes)
         in_degrees = G.get_in_degrees(self.nodes)
