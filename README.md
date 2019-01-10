@@ -12,7 +12,9 @@ I introduced next improvements:
 * fixed issue with features matrix > 2Gb
 * models are now stored as TF-saved_model (in the end of training for unsupervised, best model on f1-micro for supervised)
 * inference is moved out
-
+* two fully-connected layers were added after convolutions according to Pinterest paper (
+[Graph Convolutional Neural Networks for Web-Scale Recommender Systems](https://arxiv.org/abs/1806.01973) by Rex Ying, Ruining He, Kaifeng Chen, Pong Eksombatchai, William L. Hamilton, Jure Leskovec
+)
 Kudos to authors of original code!
 
 *graph-tool installation:
