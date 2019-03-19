@@ -256,6 +256,7 @@ class SampleAndAggregate(GeneralizedModel):
         self.G1 = layers.Dense(
             dim_mult * self.dims[-1], dim_mult * self.dims[-1],
             dropout=self.placeholders['dropout'], act=tf.nn.relu)
+
         self.G2 = layers.Dense(
             dim_mult * self.dims[-1], dim_mult * self.dims[-1],
             dropout=self.placeholders['dropout'], act=lambda x: x, bias=False)

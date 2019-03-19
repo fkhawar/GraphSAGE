@@ -74,7 +74,7 @@ class Dense(Layer):
     """Dense layer."""
     def __init__(self, input_dim, output_dim, dropout=0., 
                  act=tf.nn.relu, placeholders=None, bias=True, featureless=False, 
-                 sparse_inputs=False, **kwargs):
+                 sparse_inputs=False, batch_norm=False, **kwargs):
         super(Dense, self).__init__(**kwargs)
 
         self.dropout = dropout
@@ -84,6 +84,7 @@ class Dense(Layer):
         self.bias = bias
         self.input_dim = input_dim
         self.output_dim = output_dim
+        self.batch_norm = batch_norm
 
         # helper variable for sparse dropout
         self.sparse_inputs = sparse_inputs
@@ -108,6 +109,9 @@ class Dense(Layer):
 
         # transform
         output = tf.matmul(x, self.vars['weights'])
+
+        if self.batch_norm:
+            output = tf.layers.batch_normalization(output, scale=False)
 
         # bias
         if self.bias:
