@@ -122,6 +122,11 @@ def get_eval_metric_fns():
     #     ]
     # })
     metric_fns.update({
+        "metric/nDCG@%d" % topn: tfr.metrics.make_ranking_metric_fn(
+            tfr.metrics.RankingMetricKey.NDCG, topn=topn)
+        for topn in [5, 10, 20, 50]
+    })
+    metric_fns.update({
         "metric/mrr@%d" % topn: tfr.metrics.make_ranking_metric_fn(
             tfr.metrics.RankingMetricKey.MRR, topn=topn)
         for topn in [5, 10, 20, 50]
