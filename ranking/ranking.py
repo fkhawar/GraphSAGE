@@ -1,6 +1,7 @@
 import tensorflow as tf
 import tensorflow_ranking as tfr
 import numpy as np
+from tensorflow.contrib.learn import ModeKeys
 
 from tensorflow.python.ops import parsing_ops
 
@@ -57,7 +58,7 @@ class HeadWithScaffold(tfr.head._RankingHead):
         estimator = super(HeadWithScaffold, self).create_estimator_spec(
             features, mode, logits, labels, regularization_losses
         )
-        if not self.scaffold:
+        if not self.scaffold or mode != ModeKeys.TRAIN:
             return estimator
 
         return estimator._replace(scaffold=self.scaffold)
@@ -150,7 +151,7 @@ def get_train_input(tf_records, batch_size, list_size):
 
         ds = ds.map(lambda f: (f, tf.cast(tf.squeeze(f.pop('relevance'), -1), tf.float32)))
         iterator = ds.make_initializable_iterator()
-        iterator_initializer_hook.iterator_initializer_fn =\
+        iterator_initializer_hook.iterator_initializer_fn = \
             lambda sess: sess.run(iterator.initializer)
         return iterator.get_next()
 
@@ -179,9 +180,9 @@ def main(_):
         optimizer=None,
         train_op_fn=_train_op_fn,
         scaffolding=tf.train.Scaffold(
-           init_feed_dict={
-               'groupwise_dnn_v2/group_score/embedding_placeholder:0': embedding
-           }
+            init_feed_dict={
+                'groupwise_dnn_v2/group_score/embedding_placeholder:0': embedding
+            }
         ),
         name=None)
 
