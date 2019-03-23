@@ -85,8 +85,9 @@ def make_score_fn():
 
             candidates = tf.squeeze(group_features['candidates'], -1)
             candidates_layer = tf.nn.embedding_lookup(emb, candidates)
+            candidates_layer_shape = tf.shape(candidates_layer)
             candidates_layer = tf.reshape(candidates_layer, (
-                candidates.shape[0], -1
+                -1, candidates_layer_shape[1] * candidates_layer_shape[2]
             ))
 
             input_layer = tf.concat(
