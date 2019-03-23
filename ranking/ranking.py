@@ -191,6 +191,17 @@ def main(_):
         ),
         name=None)
 
+    serving_input = tfr.data.build_sequence_example_serving_input_receiver_fn(
+        100,
+        context_feature_spec={
+            "query": parsing_ops.FixedLenFeature([5], tf.int64)
+        },
+        example_feature_spec={
+            "candidates": parsing_ops.FixedLenFeature([1], tf.int64,
+                                                      default_value=tf.constant([-1], tf.int64)),
+        }
+    )
+
     estimator = tf.estimator.Estimator(
         model_fn=tfr.model.make_groupwise_ranking_fn(
             group_score_fn=make_score_fn(),
@@ -218,10 +229,20 @@ def main(_):
             train_hook,
         ],
         max_steps=FLAGS.num_train_steps)
+
+    def _best_model(best_eval_result, current_eval_result):
+        return current_eval_result['metric/nDCG@50'] > best_eval_result['metric/nDCG@50']
+
     vali_spec = tf.estimator.EvalSpec(
         input_fn=vali_input_fn,
         hooks=[vali_hook],
         steps=100,
+        exporters=[
+            tf.estimator.BestExporter(
+                serving_input_receiver_fn=serving_input,
+                compare_fn=_best_model
+            )
+        ],
         start_delay_secs=0,
         throttle_secs=30)
 
