@@ -210,7 +210,7 @@ def main(_):
             ranking_head=ranking_head),
         config=tf.estimator.RunConfig(
             FLAGS.output_dir,
-            save_checkpoints_steps=5000,
+            save_checkpoints_steps=1000,
             keep_checkpoint_max=2
         ),
         params=dict(
