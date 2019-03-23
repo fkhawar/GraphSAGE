@@ -198,7 +198,7 @@ def main(_):
         },
         example_feature_spec={
             "candidates": parsing_ops.FixedLenFeature([1], tf.int64,
-                                                      default_value=tf.constant([-1], tf.int64)),
+                                                      default_value=np.array([-1], dtype=np.int64)),
         }
     )
 
