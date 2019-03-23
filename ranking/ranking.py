@@ -209,7 +209,10 @@ def main(_):
             transform_fn=lambda f: ({'query': f.pop('query')}, f),
             ranking_head=ranking_head),
         config=tf.estimator.RunConfig(
-            FLAGS.output_dir, save_checkpoints_steps=1000),
+            FLAGS.output_dir,
+            save_checkpoints_steps=5000,
+            keep_checkpoint_max=2
+        ),
         params=dict(
             embedding_shape=embedding.shape
         )
@@ -240,7 +243,8 @@ def main(_):
         exporters=[
             tf.estimator.BestExporter(
                 serving_input_receiver_fn=serving_input,
-                compare_fn=_best_model
+                compare_fn=_best_model,
+                exports_to_keep=3
             )
         ],
         start_delay_secs=0,
