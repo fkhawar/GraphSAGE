@@ -22,6 +22,7 @@ flags.DEFINE_list("hidden_layer_dims", ["512", "256", "128"],
                   "Sizes for hidden layers.")
 
 flags.DEFINE_integer("list_size", 100, "List size used for training.")
+flags.DEFINE_integer("list_size_predict", 1000, "List size used for training.")
 flags.DEFINE_integer("group_size", 1, "Group size used in score function.")
 
 flags.DEFINE_string("loss", "pairwise_logistic_loss",
@@ -192,7 +193,7 @@ def main(_):
         name=None)
 
     serving_input = tfr.data.build_sequence_example_serving_input_receiver_fn(
-        100,
+        FLAGS.list_size_predict,
         context_feature_spec={
             "query": parsing_ops.FixedLenFeature([5], tf.int64)
         },
