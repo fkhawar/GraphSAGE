@@ -21,6 +21,7 @@ flags.DEFINE_float("dropout_rate", 0.5, "The dropout rate before output layer.")
 flags.DEFINE_list("hidden_layer_dims", ["512", "256", "128"],
                   "Sizes for hidden layers.")
 
+flags.DEFINE_string("aggregate", "reduce_max", "User aggregation function")
 flags.DEFINE_integer("list_size", 100, "List size used for training.")
 flags.DEFINE_integer("list_size_predict", 1000, "List size used for training.")
 flags.DEFINE_integer("group_size", 1, "Group size used in score function.")
@@ -82,7 +83,13 @@ def make_score_fn():
         with tf.name_scope("input_layer"):
             query = context_features['query']
             query_layer = tf.nn.embedding_lookup(emb, query)
-            query_layer = tf.reduce_max(query_layer, 1)
+            if FLAGS.aggregate == 'reduce_max':
+                query_layer = tf.reduce_max(query_layer, 1)
+            elif FLAGS.aggregate == 'reduce_mean':
+                query_layer = tf.reduce_mean(query_layer, 1)
+            elif FLAGS.aggregate == 'concat':
+                query_layer = tf.reshape(query_layer,
+                                         (-1, 5 * params['embedding_shape'][1]))
 
             candidates = tf.squeeze(group_features['candidates'], -1)
             candidates_layer = tf.nn.embedding_lookup(emb, candidates)
