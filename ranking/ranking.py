@@ -22,6 +22,10 @@ flags.DEFINE_list("hidden_layer_dims", ["512", "256", "128"],
                   "Sizes for hidden layers.")
 
 flags.DEFINE_string("aggregate", "reduce_max", "User aggregation function")
+flags.DEFINE_integer("horizontal_filters", 10, "")
+flags.DEFINE_integer("vertical_filters", 5, "")
+flags.DEFINE_integer("query_size", 5, "Query size")
+
 flags.DEFINE_integer("list_size", 100, "List size used for training.")
 flags.DEFINE_integer("list_size_predict", 1000, "List size used for training.")
 flags.DEFINE_integer("group_size", 1, "Group size used in score function.")
@@ -89,7 +93,24 @@ def make_score_fn():
                 query_layer = tf.reduce_mean(query_layer, 1)
             elif FLAGS.aggregate == 'concat':
                 query_layer = tf.reshape(query_layer,
-                                         (-1, 5 * params['embedding_shape'][1]))
+                                         (-1, FLAGS.query_size * params['embedding_shape'][1]))
+            else:
+                query_layer = tf.expand_dims(query_layer, -1)
+                horizontal_conv = tf.layers.conv2d(query_layer, FLAGS.horizontal_filters,
+                                                   (2, params['embedding_shape'][1]))
+                horizontal_conv = tf.reduce_max(horizontal_conv, 1)
+                horizontal_conv = tf.squeeze(horizontal_conv, 1)
+
+                vertical_conv = tf.layers.conv2d(query_layer, FLAGS.vertical_filters,
+                                                 (FLAGS.query_size, 1))
+                vertical_conv = tf.transpose(vertical_conv, (0, 3, 2, 1))
+                vertical_conv = tf.squeeze(vertical_conv, -1)
+
+                query_layer = tf.concat([
+                    horizontal_conv,
+                    tf.reshape(vertical_conv,
+                               (-1, FLAGS.query_size * params['embedding_shape'][1]))], 1
+                )
 
             candidates = tf.squeeze(group_features['candidates'], -1)
             candidates_layer = tf.nn.embedding_lookup(emb, candidates)
@@ -151,7 +172,7 @@ def get_train_input(tf_records, batch_size, list_size):
             batch_size,
             list_size,
             context_feature_spec={
-                "query": parsing_ops.FixedLenFeature([5], tf.int64)
+                "query": parsing_ops.FixedLenFeature([FLAGS.query_size], tf.int64)
             },
             example_feature_spec={
                 "candidates": parsing_ops.FixedLenFeature([1], tf.int64,
@@ -175,6 +196,7 @@ def main(_):
     tf.logging.set_verbosity(tf.logging.INFO)
 
     # embedding = np.zeros((5500000, 16))
+
     # embedding = np.vstack((embedding, np.zeros((1, embedding.shape[1]))))
 
     embedding = np.load(FLAGS.embedding_path)
@@ -202,7 +224,7 @@ def main(_):
     serving_input = tfr.data.build_sequence_example_serving_input_receiver_fn(
         FLAGS.list_size_predict,
         context_feature_spec={
-            "query": parsing_ops.FixedLenFeature([5], tf.int64)
+            "query": parsing_ops.FixedLenFeature([FLAGS.query_size], tf.int64)
         },
         example_feature_spec={
             "candidates": parsing_ops.FixedLenFeature([1], tf.int64,
